@@ -15,6 +15,8 @@ import 'package:agriflow/services/analytics_service.dart';
 import 'package:provider/provider.dart';
 import 'package:agriflow/services/auth_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:agriflow/utils/snackbar_helper.dart';
+import 'package:agriflow/utils/error_handler.dart';
 
 class PortfolioScreen extends StatefulWidget {
   const PortfolioScreen({super.key});
@@ -40,27 +42,52 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _addNewGroup(CattleGroup group) async {
-    await _portfolioService.addGroup(group);
+    try {
+      await _portfolioService.addGroup(group);
 
-    // Track analytics
-    if (mounted) {
-      Provider.of<AnalyticsService>(context, listen: false)
-          .logPortfolioGroupAdded(
-        breed: group.breed.name,
-        quantity: group.quantity,
-        weightBucket: group.weightBucket.name,
-      );
+      // Track analytics
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logPortfolioGroupAdded(
+          breed: group.breed.name,
+          quantity: group.quantity,
+          weightBucket: group.weightBucket.name,
+        );
+
+        SnackBarHelper.showSuccess(
+          context,
+          'Added ${group.quantity} ${group.breed.displayName} to portfolio',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(
+          context,
+          ErrorHandler.getFirestoreErrorMessage(e),
+        );
+      }
     }
     // No need to reload - StreamBuilder handles it automatically
   }
 
   Future<void> _removeGroup(String id) async {
-    await _portfolioService.removeGroup(id);
+    try {
+      await _portfolioService.removeGroup(id);
 
-    // Track analytics
-    if (mounted) {
-      Provider.of<AnalyticsService>(context, listen: false)
-          .logPortfolioGroupDeleted();
+      // Track analytics
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logPortfolioGroupDeleted();
+
+        SnackBarHelper.showSuccess(context, 'Group removed from portfolio');
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(
+          context,
+          ErrorHandler.getFirestoreErrorMessage(e),
+        );
+      }
     }
     // No need to reload - StreamBuilder handles it automatically
   }
@@ -79,10 +106,22 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Future<void> _exportPDF(List<CattleGroup> groups) async {
     if (groups.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add some cattle groups first!')),
-      );
+      if (mounted) {
+        SnackBarHelper.showWarning(
+          context,
+          'Add some cattle groups first before exporting',
+        );
+      }
       return;
+    }
+
+    // Show loading
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? loadingSnackBar;
+    if (mounted) {
+      loadingSnackBar = SnackBarHelper.showLoading(
+        context,
+        'Generating PDF with current market prices...',
+      );
     }
 
     // Track analytics
@@ -92,12 +131,25 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     }
 
     try {
-      final priceService = Provider.of<PricePulseService>(context, listen: false);
+      final priceService =
+          Provider.of<PricePulseService>(context, listen: false);
       await _pdfService.exportPortfolio(groups, priceService);
+
+      if (mounted) {
+        loadingSnackBar?.close();
+        SnackBarHelper.showSuccess(
+          context,
+          'Portfolio PDF generated successfully!',
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error exporting PDF: $e')));
+      if (mounted) {
+        loadingSnackBar?.close();
+        SnackBarHelper.showError(
+          context,
+          'Failed to generate PDF: ${ErrorHandler.getGenericErrorMessage(e)}',
+        );
+      }
     }
   }
 

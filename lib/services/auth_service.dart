@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/logger.dart';
+import '../utils/error_handler.dart';
+import '../utils/retry_helper.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -33,7 +35,12 @@ class AuthService extends ChangeNotifier {
     try {
       _lastError = null;
       Logger.debug('Attempting anonymous sign in...');
-      final userCredential = await _auth.signInAnonymously();
+
+      final userCredential = await RetryHelper.retryFirebaseOperation(
+        operation: () => _auth.signInAnonymously(),
+        operationName: 'Anonymous sign-in',
+      );
+
       _user = userCredential.user;
       Logger.debug('Sign in response: ${_user?.uid}');
 
@@ -43,15 +50,11 @@ class AuthService extends ChangeNotifier {
       }
 
       Logger.success("Anonymous sign in successful: ${_user?.uid}");
-    } on FirebaseAuthException catch (e) {
-      _lastError = "Auth Error: ${e.code}";
-      Logger.error("Firebase Auth Exception: ${e.code}", e);
-      Logger.error("Error message: ${e.message}");
-      notifyListeners();
     } catch (e) {
-      _lastError = "Error: $e";
+      _lastError = ErrorHandler.getAuthErrorMessage(e);
       Logger.error("Error signing in", e);
       notifyListeners();
+      rethrow; // Re-throw so callers can handle it
     }
   }
 
