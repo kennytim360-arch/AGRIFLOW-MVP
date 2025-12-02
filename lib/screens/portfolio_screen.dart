@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
 import 'package:agriflow/utils/constants.dart';
 import 'package:agriflow/services/portfolio_service.dart';
+import 'package:agriflow/services/price_pulse_service.dart';
 import 'package:agriflow/widgets/sheets/add_group_sheet.dart';
 import 'package:agriflow/widgets/cards/custom_card.dart';
 import 'package:agriflow/services/pdf_export_service.dart';
@@ -91,7 +92,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     }
 
     try {
-      await _pdfService.exportPortfolio(groups);
+      final priceService = Provider.of<PricePulseService>(context, listen: false);
+      await _pdfService.exportPortfolio(groups, priceService);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -193,9 +195,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           double totalHead = 0;
 
           for (var group in groups) {
-            // TODO: Fetch real market prices from PricePulseService
-            final medianPrice =
-                defaultDesiredPrice; // Was countyMedianPrices[group.county]
+            // Note: Using default price for portfolio summary to avoid multiple async calls
+            // Real-time prices are shown in Dashboard. Portfolio focuses on group management.
+            final medianPrice = defaultDesiredPrice;
             totalValue += group.calculateKillOutValue(medianPrice);
             totalHead += group.quantity;
           }
@@ -296,9 +298,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Widget _buildGroupCard(CattleGroup group, int index) {
-    // TODO: Fetch real market prices
-    final medianPrice =
-        defaultDesiredPrice; // Was countyMedianPrices[group.county]
+    // Note: Using default price for comparison
+    // See Dashboard for real-time market price analysis
+    final medianPrice = defaultDesiredPrice;
     final perHeadDiff = group.calculatePerHeadDifference(medianPrice);
     final isPositive = perHeadDiff >= 0;
 

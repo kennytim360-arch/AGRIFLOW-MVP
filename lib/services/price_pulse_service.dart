@@ -111,24 +111,117 @@ class PricePulseService {
   }
 
   /// Get 7-day trend data
+  /// Returns daily median prices for the specified breed/weight/county
   Future<List<Map<String, dynamic>>> getTrendData({
     required Breed breed,
     required WeightBucket weightBucket,
     String? county,
   }) async {
-    // Implementation placeholder - returns empty list for now
-    // TODO: Implement trend calculation
-    return [];
+    try {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      final snapshot = await _firestore
+          .collection(_getPublicPath())
+          .where(
+            'submission_date',
+            isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
+          )
+          .get();
+
+      // Filter and group by date
+      final Map<String, List<double>> pricesByDate = {};
+
+      for (var doc in snapshot.docs) {
+        final pulse = PricePulse.fromMap(doc.data(), doc.id);
+
+        // Apply filters
+        if (pulse.breed != breed) continue;
+        if (pulse.weightBucket != weightBucket) continue;
+        if (county != null && pulse.county != county) continue;
+
+        // Group by date (ignore time)
+        final dateKey = '${pulse.submissionDate.year}-${pulse.submissionDate.month.toString().padLeft(2, '0')}-${pulse.submissionDate.day.toString().padLeft(2, '0')}';
+
+        pricesByDate.putIfAbsent(dateKey, () => []);
+        pricesByDate[dateKey]!.add(pulse.price);
+      }
+
+      // Calculate median for each day and sort by date
+      final List<Map<String, dynamic>> trendData = [];
+
+      for (var entry in pricesByDate.entries) {
+        final prices = entry.value..sort();
+        final middle = prices.length ~/ 2;
+        final median = prices.length % 2 == 1
+            ? prices[middle]
+            : (prices[middle - 1] + prices[middle]) / 2;
+
+        trendData.add({
+          'date': DateTime.parse(entry.key),
+          'price': median,
+          'count': prices.length,
+        });
+      }
+
+      // Sort by date ascending
+      trendData.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
+
+      Logger.info('Calculated trend data: ${trendData.length} days');
+      return trendData;
+    } catch (e) {
+      Logger.error('Error calculating trend data', e);
+      return [];
+    }
   }
 
   /// Get county price map for heatmap
+  /// Returns median prices by county for the specified breed/weight
   Future<Map<String, double>> getCountyPrices({
     required Breed breed,
     required WeightBucket weightBucket,
   }) async {
-    // Implementation placeholder - returns empty map for now
-    // TODO: Implement heatmap data
-    return {};
+    try {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: pricePulseDays));
+      final snapshot = await _firestore
+          .collection(_getPublicPath())
+          .where(
+            'submission_date',
+            isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
+          )
+          .get();
+
+      // Group prices by county
+      final Map<String, List<double>> pricesByCounty = {};
+
+      for (var doc in snapshot.docs) {
+        final pulse = PricePulse.fromMap(doc.data(), doc.id);
+
+        // Apply filters
+        if (pulse.breed != breed) continue;
+        if (pulse.weightBucket != weightBucket) continue;
+
+        pricesByCounty.putIfAbsent(pulse.county, () => []);
+        pricesByCounty[pulse.county]!.add(pulse.price);
+      }
+
+      // Calculate median for each county
+      final Map<String, double> countyMedians = {};
+
+      for (var entry in pricesByCounty.entries) {
+        final prices = entry.value..sort();
+        final middle = prices.length ~/ 2;
+        final median = prices.length % 2 == 1
+            ? prices[middle]
+            : (prices[middle - 1] + prices[middle]) / 2;
+
+        countyMedians[entry.key] = median;
+      }
+
+      Logger.info('Calculated county prices: ${countyMedians.length} counties');
+      return countyMedians;
+    } catch (e) {
+      Logger.error('Error calculating county prices', e);
+      return {};
+    }
   }
 
   /// Add a validation (upvote) to a price pulse
