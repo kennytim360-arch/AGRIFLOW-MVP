@@ -19,13 +19,14 @@ import 'services/user_preferences_service.dart';
 import 'services/analytics_service.dart';
 import 'services/validation_tracker_service.dart';
 import 'providers/theme_provider.dart';
+import 'utils/logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
   try {
-    print('🚀 Initializing Firebase...');
+    Logger.info('Initializing Firebase...');
     await Firebase.initializeApp(
       options: FirebaseOptions(
         apiKey: FirebaseConfig.apiKey,
@@ -36,34 +37,34 @@ void main() async {
         appId: FirebaseConfig.appId,
       ),
     );
-    print('✅ Firebase initialized successfully!');
+    Logger.success('Firebase initialized successfully!');
 
     // Initialize Crashlytics (catches Flutter errors)
     // Temporarily disabled due to version conflicts with Firebase Core 4.x
     // FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
     // Attempt sign-in immediately
-    print('🔐 Attempting anonymous sign-in...');
+    Logger.info('Attempting anonymous sign-in...');
     try {
       final auth = FirebaseAuth.instance;
       final userCredential = await auth.signInAnonymously();
-      print(
-        '✅ Anonymous sign-in successful! User ID: ${userCredential.user?.uid}',
+      Logger.success(
+        'Anonymous sign-in successful! User ID: ${userCredential.user?.uid}',
       );
     } on FirebaseAuthException catch (e) {
-      print('❌ Anonymous sign-in FAILED with code: ${e.code}');
-      print('❌ Message: ${e.message}');
-      print(
-        '⚠️ Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
+      Logger.error('Anonymous sign-in FAILED with code: ${e.code}', e);
+      Logger.warning('Message: ${e.message}');
+      Logger.warning(
+        'Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
       );
     } catch (e) {
-      print('❌ Anonymous sign-in FAILED: $e');
-      print(
-        '⚠️ Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
+      Logger.error('Anonymous sign-in FAILED', e);
+      Logger.warning(
+        'Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
       );
     }
   } catch (e) {
-    print('❌ Firebase initialization failed: $e');
+    Logger.error('Firebase initialization failed', e);
   }
 
   runApp(const MyApp());
