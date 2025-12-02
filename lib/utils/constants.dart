@@ -61,6 +61,21 @@ const double defaultDesiredPrice = 4.20;
 const int defaultQuantity = 30;
 const String defaultCounty = 'Cork';
 
+/// Cattle-specific constants
+const double dressingPercentage = 0.55; // 55% kill-out percentage
+const double maxPricePerKg = 10.0; // Maximum price per kg (sanity check)
+const int maxAnimalsPerGroup = 1000; // Maximum animals per portfolio group
+
+/// Price pulse constants
+const int pricePulseTtlSeconds = 604800; // 7 days in seconds
+const int pricePulseDays = 7; // Price pulses expire after 7 days
+
+/// Hot score calculation constants
+const double timeDecayHours = 0.75; // 45 minutes = 0.75 hours for Reddit-style algorithm
+
+/// Rate limiting constants
+const int validationMinIntervalMs = 1000; // 1 second between validations
+
 // NOTE: County median prices are fetched dynamically from PricePulseService.
 // DO NOT hardcode price data here. Use:
 //   await pricePulseService.getCountyPrices(breed: ..., weightBucket: ...)

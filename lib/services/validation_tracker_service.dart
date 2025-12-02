@@ -6,6 +6,7 @@
 library;
 
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/constants.dart';
 
 class ValidationTrackerService {
   static const String _validatedKey = 'validated_pulses';
@@ -107,9 +108,8 @@ class ValidationTrackerService {
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final timeDiff = now - lastTime;
-    const minInterval = 1000; // 1 second between validations
 
-    return timeDiff >= minInterval;
+    return timeDiff >= validationMinIntervalMs;
   }
 
   /// Record validation time (for rate limiting)

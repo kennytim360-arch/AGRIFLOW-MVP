@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/price_pulse.dart';
 import '../models/cattle_group.dart';
+import '../utils/logger.dart';
+import '../utils/constants.dart';
 
 class PricePulseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,7 +44,7 @@ class PricePulseService {
     try {
       // Verify user is authenticated (but don't store user ID for anonymity)
       if (_auth.currentUser == null) {
-        print('❌ User not authenticated, cannot submit pulse');
+        Logger.error('User not authenticated, cannot submit pulse');
         return;
       }
 
@@ -51,10 +53,15 @@ class PricePulseService {
       // Convert DateTime to Timestamp for Firestore
       data['submission_date'] = Timestamp.fromDate(pulse.submissionDate);
 
+      // Add required fields for security rules validation
+      data['timestamp'] = data['submission_date']; // Alias for security rules
+      data['ttl'] = pricePulseTtlSeconds; // For auto-deletion
+      data['submitted_by'] = _auth.currentUser!.uid; // For security validation
+
       await _firestore.collection(_getPublicPath()).add(data);
-      print('✅ Price pulse submitted successfully');
+      Logger.success('Price pulse submitted successfully');
     } catch (e) {
-      print('❌ Error adding price pulse: $e');
+      Logger.error('Error adding price pulse', e);
     }
   }
 
@@ -98,7 +105,7 @@ class PricePulseService {
         return (prices[middle - 1] + prices[middle]) / 2;
       }
     } catch (e) {
-      print('❌ Error calculating median price: $e');
+      Logger.error('Error calculating median price', e);
       return 0.0;
     }
   }
@@ -131,12 +138,12 @@ class PricePulseService {
         'validation_count': FieldValue.increment(1),
         'last_updated': FieldValue.serverTimestamp(),
       });
-      print('✅ Validation added to pulse $pulseId');
+      Logger.success('Validation added to pulse $pulseId');
 
       // Recalculate hot score after validation
       await _recalculateHotScore(pulseId);
     } catch (e) {
-      print('❌ Error adding validation: $e');
+      Logger.error('Error adding validation', e);
       rethrow;
     }
   }
@@ -148,12 +155,12 @@ class PricePulseService {
         'flag_count': FieldValue.increment(1),
         'last_updated': FieldValue.serverTimestamp(),
       });
-      print('✅ Flag added to pulse $pulseId');
+      Logger.success('Flag added to pulse $pulseId');
 
       // Recalculate hot score after flag
       await _recalculateHotScore(pulseId);
     } catch (e) {
-      print('❌ Error adding flag: $e');
+      Logger.error('Error adding flag', e);
       rethrow;
     }
   }
@@ -168,7 +175,6 @@ class PricePulseService {
       final pulse = PricePulse.fromMap(doc.data()!, doc.id);
       final score = pulse.netScore; // validationCount - flagCount
       final ageInHours = DateTime.now().difference(pulse.submissionDate).inMinutes / 60.0;
-      const timeDecayHours = 0.75; // 45 minutes = 0.75 hours
 
       // Reddit-style hot score
       final absScore = score.abs();
@@ -180,7 +186,7 @@ class PricePulseService {
         'hot_score': hotScore,
       });
     } catch (e) {
-      print('❌ Error recalculating hot score: $e');
+      Logger.error('Error recalculating hot score', e);
     }
   }
 

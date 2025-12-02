@@ -31,13 +31,13 @@ service cloud.firestore {
     /// Validate Portfolio entry
     function isValidPortfolio() {
       let data = request.resource.data;
-      return data.keys().hasAll(['animal_type', 'breed', 'quantity', 'weight_bucket', 'desired_price', 'county', 'created_at'])
+      return data.keys().hasAll(['breed', 'quantity', 'weight_bucket', 'desired_price_per_kg', 'county', 'created_at'])
         && data.quantity is number
         && data.quantity > 0
         && data.quantity <= 1000  // Max 1000 animals per group
-        && data.desired_price is number
-        && data.desired_price > 0
-        && data.desired_price < 10  // Max €10/kg
+        && data.desired_price_per_kg is number
+        && data.desired_price_per_kg > 0
+        && data.desired_price_per_kg < 10  // Max €10/kg
         && data.created_at is timestamp;
     }
 
@@ -79,8 +79,13 @@ service cloud.firestore {
       // Only authenticated users can submit, with validation
       allow create: if isAuthenticated() && isValidPricePulse();
 
-      // Price pulses are immutable once submitted
-      allow update: if false;
+      // Allow updates only for validation_count, flag_count, hot_score, last_updated
+      // These fields are updated when users validate/flag price submissions
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['validation_count', 'flag_count', 'hot_score', 'last_updated'])
+        && request.resource.data.validation_count >= resource.data.validation_count
+        && request.resource.data.flag_count >= resource.data.flag_count;
 
       // Only Cloud Functions can delete (using admin SDK)
       allow delete: if false;

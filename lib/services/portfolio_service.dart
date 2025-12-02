@@ -6,6 +6,7 @@ library;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/cattle_group.dart';
+import '../utils/logger.dart';
 
 class PortfolioService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -24,22 +25,22 @@ class PortfolioService {
     try {
       final userId = _auth.currentUser?.uid;
       if (userId == null) {
-        print('⚠️ User not signed in, returning empty list');
+        Logger.warning('User not signed in, returning empty list');
         return [];
       }
 
-      print('🔍 Loading groups for user: $userId');
+      Logger.debug('Loading groups for user: $userId');
       final snapshot = await _firestore
           .collection(_getUserPath())
           .orderBy('created_at', descending: true)
           .get();
 
-      print('📦 Loaded ${snapshot.docs.length} groups');
+      Logger.info('Loaded ${snapshot.docs.length} groups');
       return snapshot.docs
           .map((doc) => CattleGroup.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      print('❌ Error loading groups: $e');
+      Logger.error('Error loading groups', e);
       return [];
     }
   }
@@ -47,24 +48,23 @@ class PortfolioService {
   /// Add a new group to Firestore
   Future<void> addGroup(CattleGroup group) async {
     try {
-      print('🔍 DEBUG: Starting addGroup...');
+      Logger.debug('Starting addGroup...');
       final userId = _auth.currentUser?.uid;
-      print('🔍 DEBUG: User ID: $userId');
+      Logger.debug('User ID: $userId');
 
       if (userId == null) {
-        print('❌ ERROR: User not signed in! Cannot add group.');
+        Logger.error('User not signed in! Cannot add group.');
         return;
       }
 
       final data = group.toMap();
-      print('🔍 DEBUG: Group data: $data');
+      Logger.debug('Group data: $data');
 
-      print('🔍 DEBUG: Attempting to insert into Firestore...');
+      Logger.debug('Attempting to insert into Firestore...');
       await _firestore.collection(_getUserPath()).add(data);
-      print('✅ SUCCESS: Group added to Firestore!');
+      Logger.success('Group added to Firestore!');
     } catch (e) {
-      print('❌ ERROR adding group: $e');
-      print('❌ ERROR details: ${e.toString()}');
+      Logger.error('Error adding group', e);
     }
   }
 
@@ -72,9 +72,9 @@ class PortfolioService {
   Future<void> removeGroup(String id) async {
     try {
       await _firestore.collection(_getUserPath()).doc(id).delete();
-      print('✅ Group deleted: $id');
+      Logger.success('Group deleted: $id');
     } catch (e) {
-      print('❌ Error removing group: $e');
+      Logger.error('Error removing group', e);
     }
   }
 
@@ -88,9 +88,9 @@ class PortfolioService {
       for (var doc in snapshot.docs) {
         await doc.reference.delete();
       }
-      print('✅ All groups cleared');
+      Logger.success('All groups cleared');
     } catch (e) {
-      print('❌ Error clearing groups: $e');
+      Logger.error('Error clearing groups', e);
     }
   }
 
@@ -99,7 +99,7 @@ class PortfolioService {
   Stream<List<CattleGroup>> getGroupsStream() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('⚠️ User not signed in, returning empty stream');
+      Logger.warning('User not signed in, returning empty stream');
       return Stream.value([]);
     }
 
@@ -108,7 +108,7 @@ class PortfolioService {
         .orderBy('created_at', descending: true)
         .snapshots()
         .map((snapshot) {
-          print('📦 Real-time update: ${snapshot.docs.length} groups');
+          Logger.info('Real-time update: ${snapshot.docs.length} groups');
           return snapshot.docs
               .map((doc) => CattleGroup.fromMap(doc.data(), doc.id))
               .toList();

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/logger.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -31,33 +32,25 @@ class AuthService extends ChangeNotifier {
   Future<void> signInAnonymously() async {
     try {
       _lastError = null;
-      print('🔐 DEBUG: Attempting anonymous sign in...');
+      Logger.debug('Attempting anonymous sign in...');
       final userCredential = await _auth.signInAnonymously();
       _user = userCredential.user;
-      print('🔐 DEBUG: Sign in response: ${_user?.uid}');
+      Logger.debug('Sign in response: ${_user?.uid}');
 
       // Create user document if it doesn't exist
       if (_user != null) {
         await _createUserDocument(_user!.uid);
       }
 
-      if (kDebugMode) {
-        print("✅ Anonymous sign in successful: ${_user?.uid}");
-      }
+      Logger.success("Anonymous sign in successful: ${_user?.uid}");
     } on FirebaseAuthException catch (e) {
       _lastError = "Auth Error: ${e.code}";
-      print("❌ Firebase Auth Exception: ${e.code}");
-      print("❌ Error message: ${e.message}");
-      if (kDebugMode) {
-        print("❌ Error details: ${e.toString()}");
-      }
+      Logger.error("Firebase Auth Exception: ${e.code}", e);
+      Logger.error("Error message: ${e.message}");
       notifyListeners();
     } catch (e) {
       _lastError = "Error: $e";
-      if (kDebugMode) {
-        print("❌ Error signing in: $e");
-        print("❌ Error details: ${e.toString()}");
-      }
+      Logger.error("Error signing in", e);
       notifyListeners();
     }
   }
@@ -75,14 +68,12 @@ class AuthService extends ChangeNotifier {
       );
       _user = userCredential.user;
 
-      if (kDebugMode) {
-        print("✅ Email sign in successful: ${_user?.uid}");
-      }
+      Logger.success("Email sign in successful: ${_user?.uid}");
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
       _lastError = "Auth Error: ${e.code}";
-      print("❌ Firebase Auth Exception: ${e.code}");
+      Logger.error("Firebase Auth Exception: ${e.code}", e);
       notifyListeners();
       return null;
     }
@@ -106,14 +97,12 @@ class AuthService extends ChangeNotifier {
         await _createUserDocument(_user!.uid);
       }
 
-      if (kDebugMode) {
-        print("✅ Email registration successful: ${_user?.uid}");
-      }
+      Logger.success("Email registration successful: ${_user?.uid}");
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
       _lastError = "Auth Error: ${e.code}";
-      print("❌ Firebase Auth Exception: ${e.code}");
+      Logger.error("Firebase Auth Exception: ${e.code}", e);
       notifyListeners();
       return null;
     }
@@ -146,15 +135,13 @@ class AuthService extends ChangeNotifier {
         'linked_at': FieldValue.serverTimestamp(),
       });
 
-      if (kDebugMode) {
-        print("✅ Anonymous account linked to email: ${_user?.uid}");
-      }
+      Logger.success("Anonymous account linked to email: ${_user?.uid}");
 
       notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
       _lastError = "Link Error: ${e.code} - ${e.message}";
-      print("❌ Error linking account: ${e.code}");
+      Logger.error("Error linking account: ${e.code}", e);
       notifyListeners();
       return false;
     }
@@ -166,14 +153,12 @@ class AuthService extends ChangeNotifier {
       _lastError = null;
       await _auth.sendPasswordResetEmail(email: email);
 
-      if (kDebugMode) {
-        print("✅ Password reset email sent to: $email");
-      }
+      Logger.success("Password reset email sent to: $email");
 
       return true;
     } on FirebaseAuthException catch (e) {
       _lastError = "Password Reset Error: ${e.code}";
-      print("❌ Error sending password reset: ${e.code}");
+      Logger.error("Error sending password reset: ${e.code}", e);
       notifyListeners();
       return false;
     }
@@ -183,11 +168,9 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     try {
       await _auth.signOut();
-      if (kDebugMode) {
-        print("✅ User signed out");
-      }
+      Logger.success("User signed out");
     } catch (e) {
-      print("❌ Error signing out: $e");
+      Logger.error("Error signing out", e);
     }
   }
 
@@ -208,19 +191,17 @@ class AuthService extends ChangeNotifier {
       // Delete Firebase Auth user
       await _user!.delete();
 
-      if (kDebugMode) {
-        print("✅ User account deleted: $userId");
-      }
+      Logger.success("User account deleted: $userId");
 
       return true;
     } on FirebaseAuthException catch (e) {
       _lastError = "Delete Error: ${e.code}";
-      print("❌ Error deleting account: ${e.code}");
+      Logger.error("Error deleting account: ${e.code}", e);
       notifyListeners();
       return false;
     } catch (e) {
       _lastError = "Delete Error: $e";
-      print("❌ Error deleting account: $e");
+      Logger.error("Error deleting account", e);
       notifyListeners();
       return false;
     }
@@ -245,12 +226,10 @@ class AuthService extends ChangeNotifier {
           },
         });
 
-        if (kDebugMode) {
-          print("✅ User document created: $userId");
-        }
+        Logger.success("User document created: $userId");
       }
     } catch (e) {
-      print("❌ Error creating user document: $e");
+      Logger.error("Error creating user document", e);
     }
   }
 }
