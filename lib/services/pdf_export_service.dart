@@ -1,3 +1,8 @@
+/// pdf_export_service.dart - PDF generation and export service for portfolio reports
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -15,7 +20,9 @@ class PDFExportService {
     double totalWeight = 0;
 
     for (var group in groups) {
-      final medianPrice = countyMedianPrices[group.county] ?? 4.0;
+      // TODO: Fetch real market prices
+      final medianPrice =
+          defaultDesiredPrice; // Was countyMedianPrices[group.county]
       totalValue += group.calculateKillOutValue(medianPrice);
       totalHead += group.quantity;
       totalWeight += group.totalWeight;

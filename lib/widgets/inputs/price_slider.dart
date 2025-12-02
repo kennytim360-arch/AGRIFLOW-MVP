@@ -1,3 +1,8 @@
+/// price_slider.dart - Price per kg slider input widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 
 class PriceSlider extends StatelessWidget {

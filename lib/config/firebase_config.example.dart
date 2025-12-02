@@ -1,3 +1,8 @@
+/// firebase_config.example.dart - Firebase configuration template
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 class FirebaseConfig {
   // TODO: Replace with your actual Firebase credentials
   // Get these from Firebase Console → Project Settings → Your apps → Web app

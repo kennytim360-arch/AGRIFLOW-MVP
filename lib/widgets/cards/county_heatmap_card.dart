@@ -1,6 +1,10 @@
+/// county_heatmap_card.dart - Geographic price comparison heatmap widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
-import 'package:agriflow/widgets/custom_card.dart';
-import 'package:agriflow/utils/constants.dart';
+import 'custom_card.dart';
 
 class CountyPriceData {
   final String county;
@@ -59,9 +63,9 @@ class CountyHeatmapCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'No county data available',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -86,9 +90,9 @@ class CountyHeatmapCard extends StatelessWidget {
             children: [
               Text(
                 'County Price Map',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -99,9 +103,9 @@ class CountyHeatmapCard extends StatelessWidget {
                 child: Text(
                   'Yesterday',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ],
@@ -109,9 +113,9 @@ class CountyHeatmapCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Offered €/kg by county (tap to filter)',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
 
@@ -133,12 +137,7 @@ class CountyHeatmapCard extends StatelessWidget {
                 Colors.orange.shade700,
               ),
               const SizedBox(width: 16),
-              _buildLegendItem(
-                context,
-                '🔴',
-                '< −5c',
-                Colors.red.shade700,
-              ),
+              _buildLegendItem(context, '🔴', '< −5c', Colors.red.shade700),
             ],
           ),
           const SizedBox(height: 16),
@@ -152,9 +151,9 @@ class CountyHeatmapCard extends StatelessWidget {
               child: Text(
                 '+${sortedData.length - 10} more counties',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
@@ -222,17 +221,14 @@ class CountyHeatmapCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(
-                emoji,
-                style: const TextStyle(fontSize: 18),
-              ),
+              Text(emoji, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   data.county,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Column(
@@ -241,16 +237,16 @@ class CountyHeatmapCard extends StatelessWidget {
                   Text(
                     '€${data.offeredPrice.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
                   ),
                   Text(
                     '${differenceInCents >= 0 ? '+' : ''}${differenceInCents.toStringAsFixed(0)}c',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 11,
-                          color: textColor,
-                        ),
+                      fontSize: 11,
+                      color: textColor,
+                    ),
                   ),
                 ],
               ),

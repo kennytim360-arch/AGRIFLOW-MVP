@@ -1,8 +1,14 @@
+/// calculator_screen.dart - Time-to-kill calculator screen
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:agriflow/models/cattle_group.dart';
-import 'package:agriflow/widgets/custom_card.dart';
+import 'package:agriflow/widgets/cards/custom_card.dart';
 import 'package:agriflow/services/portfolio_service.dart';
-import 'package:agriflow/utils/constants.dart';
+import 'package:agriflow/services/analytics_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 
@@ -24,6 +30,18 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   // Mock data for margin calculation
   final double _currentMedianPrice = 4.10; // €/kg
+
+  @override
+  void initState() {
+    super.initState();
+    // Track screen view
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logScreenView(screenName: 'Calculator');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,8 +118,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             min: 400,
                             max: 900,
                             divisions: 50,
-                            onChanged: (val) =>
-                                setState(() => _liveWeight = val),
+                            onChanged: (val) {
+                              setState(() => _liveWeight = val);
+                              _logCalculatorUsed();
+                            },
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -133,8 +153,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             min: 500,
                             max: 800,
                             divisions: 30,
-                            onChanged: (val) =>
-                                setState(() => _targetWeight = val),
+                            onChanged: (val) {
+                              setState(() => _targetWeight = val);
+                              _logCalculatorUsed();
+                            },
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -410,6 +432,16 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  void _logCalculatorUsed() {
+    // Log analytics (debounced - only when user stops dragging)
+    Provider.of<AnalyticsService>(context, listen: false).logCalculatorUsed(
+      calculationType: 'time_to_kill',
+      breed: 'cattle',
+      currentWeight: _liveWeight,
+      targetWeight: _targetWeight,
     );
   }
 

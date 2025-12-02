@@ -1,10 +1,15 @@
+/// add_group_sheet.dart - Modal bottom sheet for adding cattle groups
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
-import 'package:agriflow/widgets/breed_picker.dart';
-import 'package:agriflow/widgets/weight_bucket_picker.dart';
-import 'package:agriflow/widgets/quantity_slider.dart';
-import 'package:agriflow/widgets/price_slider.dart';
-import 'package:agriflow/widgets/county_picker.dart';
+import '../inputs/breed_picker.dart';
+import '../inputs/weight_bucket_picker.dart';
+import '../inputs/quantity_slider.dart';
+import '../inputs/price_slider.dart';
+import '../inputs/county_picker.dart';
 
 class AddGroupSheet extends StatefulWidget {
   final Function(CattleGroup) onSave;

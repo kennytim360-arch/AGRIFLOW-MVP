@@ -1,3 +1,10 @@
+/// cattle_group.dart - Data models for cattle groups and related enums
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 // Animal Type - First Selection
 enum AnimalType {
   cattle('Cattle', '🐄'),
@@ -124,12 +131,23 @@ class CattleGroup {
       'weight_bucket': weightBucket.name,
       'county': county,
       'desired_price_per_kg': desiredPricePerKg,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'created_at': Timestamp.fromDate(createdAt),
+      'updated_at': Timestamp.fromDate(updatedAt),
     };
   }
 
   factory CattleGroup.fromMap(Map<String, dynamic> map, String id) {
+    // Handle both Timestamp (from Firestore) and String (from JSON)
+    DateTime parseDate(dynamic value) {
+      if (value is Timestamp) {
+        return value.toDate();
+      } else if (value is String) {
+        return DateTime.parse(value);
+      } else {
+        return DateTime.now();
+      }
+    }
+
     return CattleGroup(
       id: id,
       breed: Breed.values.firstWhere(
@@ -143,12 +161,8 @@ class CattleGroup {
       ),
       county: map['county'] ?? 'Dublin',
       desiredPricePerKg: map['desired_price_per_kg']?.toDouble() ?? 4.0,
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'])
-          : DateTime.now(),
-      updatedAt: map['updated_at'] != null
-          ? DateTime.parse(map['updated_at'])
-          : DateTime.now(),
+      createdAt: parseDate(map['created_at']),
+      updatedAt: parseDate(map['updated_at']),
     );
   }
 

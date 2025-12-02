@@ -1,6 +1,11 @@
+/// price_pulse_filter_bar.dart - Filter controls for price pulse screen
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
-import 'package:agriflow/widgets/breed_picker.dart';
+import '../inputs/breed_picker.dart';
 
 class PricePulseFilterBar extends StatelessWidget {
   final Breed selectedBreed;

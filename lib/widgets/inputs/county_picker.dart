@@ -1,3 +1,8 @@
+/// county_picker.dart - Irish county dropdown selector widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/utils/constants.dart';
 

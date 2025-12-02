@@ -1,0 +1,69 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "county",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ttl",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "portfolios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

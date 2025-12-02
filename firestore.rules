@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================
+    // Helper Functions
+    // ========================================
+
+    /// Check if user is authenticated (includes anonymous)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /// Check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    /// Validate Price Pulse submission
+    function isValidPricePulse() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['breed', 'weight_bucket', 'price', 'county', 'timestamp', 'ttl', 'submitted_by'])
+        && data.submitted_by == request.auth.uid
+        && data.price is number
+        && data.price > 0
+        && data.price < 10  // Max €10/kg (sanity check)
+        && data.ttl == 604800  // Must be exactly 7 days (in seconds)
+        && data.timestamp is timestamp;
+    }
+
+    /// Validate Portfolio entry
+    function isValidPortfolio() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['animal_type', 'breed', 'quantity', 'weight_bucket', 'desired_price', 'county', 'created_at'])
+        && data.quantity is number
+        && data.quantity > 0
+        && data.quantity <= 1000  // Max 1000 animals per group
+        && data.desired_price is number
+        && data.desired_price > 0
+        && data.desired_price < 10  // Max €10/kg
+        && data.created_at is timestamp;
+    }
+
+    // ========================================
+    // Users Collection
+    // ========================================
+
+    /// User documents: Only owner can read/write
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+
+      // Portfolio subcollection: Private to user
+      match /portfolios/{portfolioId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPortfolio();
+        allow update: if isOwner(userId) && isValidPortfolio();
+        allow delete: if isOwner(userId);
+      }
+
+      // Preferences subcollection: Private to user
+      match /preferences/{preferenceId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ========================================
+    // Price Pulses Collection (Anonymous Market Data)
+    // ========================================
+
+    /// Price Pulses: Public read, authenticated write
+    /// Auto-delete after 7 days via TTL
+    match /pricePulses/{pricePulseId} {
+      // Any authenticated user (including anonymous) can read
+      allow read: if isAuthenticated();
+
+      // Only authenticated users can submit, with validation
+      allow create: if isAuthenticated() && isValidPricePulse();
+
+      // Price pulses are immutable once submitted
+      allow update: if false;
+
+      // Only Cloud Functions can delete (using admin SDK)
+      allow delete: if false;
+    }
+  }
+}

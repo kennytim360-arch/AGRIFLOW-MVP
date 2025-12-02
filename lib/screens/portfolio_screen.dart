@@ -1,10 +1,18 @@
+/// portfolio_screen.dart - Cattle portfolio management screen
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
 import 'package:agriflow/utils/constants.dart';
-import 'package:agriflow/widgets/add_group_sheet.dart';
-import 'package:agriflow/widgets/custom_card.dart';
 import 'package:agriflow/services/portfolio_service.dart';
+import 'package:agriflow/widgets/sheets/add_group_sheet.dart';
+import 'package:agriflow/widgets/cards/custom_card.dart';
 import 'package:agriflow/services/pdf_export_service.dart';
+import 'package:agriflow/services/analytics_service.dart';
+import 'package:provider/provider.dart';
+import 'package:agriflow/services/auth_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 class PortfolioScreen extends StatefulWidget {
@@ -17,37 +25,47 @@ class PortfolioScreen extends StatefulWidget {
 class _PortfolioScreenState extends State<PortfolioScreen> {
   final PortfolioService _portfolioService = PortfolioService();
   final PDFExportService _pdfService = PDFExportService();
-  List<CattleGroup> _groups = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
-  }
-
-  Future<void> _loadGroups() async {
-    setState(() => _isLoading = true);
-    final groups = await _portfolioService.loadGroups();
-    setState(() {
-      _groups = groups;
-      _isLoading = false;
+    // Track screen view
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logScreenView(screenName: 'Portfolio');
+      }
     });
   }
 
   Future<void> _addNewGroup(CattleGroup group) async {
     await _portfolioService.addGroup(group);
-    await _loadGroups();
+
+    // Track analytics
+    if (mounted) {
+      Provider.of<AnalyticsService>(context, listen: false)
+          .logPortfolioGroupAdded(
+        breed: group.breed.name,
+        quantity: group.quantity,
+        weightBucket: group.weightBucket.name,
+      );
+    }
+    // No need to reload - StreamBuilder handles it automatically
   }
 
   Future<void> _removeGroup(String id) async {
     await _portfolioService.removeGroup(id);
-    await _loadGroups();
+
+    // Track analytics
+    if (mounted) {
+      Provider.of<AnalyticsService>(context, listen: false)
+          .logPortfolioGroupDeleted();
+    }
+    // No need to reload - StreamBuilder handles it automatically
   }
 
-  void _sharePortfolio() {
-    // Construct the share text
-    final summary = _groups
+  void _sharePortfolio(List<CattleGroup> groups) {
+    final summary = groups
         .map(
           (g) =>
               '${g.breed.emoji}×${g.quantity} ${g.weightBucket.displayName} ${g.county} – holding for €${g.desiredPricePerKg.toStringAsFixed(2)}+',
@@ -55,20 +73,25 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         .join('\n');
 
     final text = '$summary\n\n🚀 #ForFarmers #AgriPulse';
-
     Share.share(text);
   }
 
-  Future<void> _exportPDF() async {
-    if (_groups.isEmpty) {
+  Future<void> _exportPDF(List<CattleGroup> groups) async {
+    if (groups.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add some cattle groups first!')),
       );
       return;
     }
 
+    // Track analytics
+    if (mounted) {
+      Provider.of<AnalyticsService>(context, listen: false)
+          .logPdfExported(groupCount: groups.length);
+    }
+
     try {
-      await _pdfService.exportPortfolio(_groups);
+      await _pdfService.exportPortfolio(groups);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -78,51 +101,129 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate Portfolio Totals
-    double totalValue = 0;
-    double totalHead = 0;
-
-    for (var group in _groups) {
-      final medianPrice = countyMedianPrices[group.county] ?? 4.0;
-      totalValue += group.calculateKillOutValue(medianPrice);
-      totalHead += group.quantity;
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Herd'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: _exportPDF,
-            tooltip: 'Export PDF',
+          // DEBUG: Show User ID or Login Button
+          Consumer<AuthService>(
+            builder: (context, auth, _) {
+              if (auth.user != null) {
+                return const Center(
+                  child: Text('✅', style: TextStyle(fontSize: 12)),
+                );
+              }
+              return TextButton(
+                onPressed: () async {
+                  try {
+                    await auth.signInAnonymously();
+                    if (auth.user == null) {
+                      throw Exception(
+                        auth.lastError ?? 'Sign in returned null user',
+                      );
+                    }
+                  } catch (e) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Login Error'),
+                        content: Text(e.toString()),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Login', style: TextStyle(color: Colors.red)),
+              );
+            },
+          ),
+          // PDF Export Button - needs groups from stream
+          StreamBuilder<List<CattleGroup>>(
+            stream: _portfolioService.getGroupsStream(),
+            builder: (context, snapshot) {
+              final groups = snapshot.data ?? [];
+              return IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () => _exportPDF(groups),
+                tooltip: 'Export PDF',
+              );
+            },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // 📊 Instant Portfolio Card
-                _buildInstantPortfolioCard(totalValue, totalHead),
+      body: StreamBuilder<List<CattleGroup>>(
+        stream: _portfolioService.getGroupsStream(),
+        builder: (context, snapshot) {
+          // Handle loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                // List of Groups
-                Expanded(
-                  child: _groups.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _groups.length,
-                          itemBuilder: (context, index) {
-                            return _buildGroupCard(_groups[index], index);
-                          },
-                        ),
-                ),
+          // Handle error state
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {}); // Trigger rebuild to retry
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
 
-                // Sticky Bottom Actions
-                _buildStickyActions(context),
-              ],
-            ),
+          // Get data
+          final groups = snapshot.data ?? [];
+
+          // Calculate Portfolio Totals
+          double totalValue = 0;
+          double totalHead = 0;
+
+          for (var group in groups) {
+            // TODO: Fetch real market prices from PricePulseService
+            final medianPrice =
+                defaultDesiredPrice; // Was countyMedianPrices[group.county]
+            totalValue += group.calculateKillOutValue(medianPrice);
+            totalHead += group.quantity;
+          }
+
+          return Column(
+            children: [
+              // 📊 Instant Portfolio Card
+              _buildInstantPortfolioCard(totalValue, totalHead),
+
+              // List of Groups
+              Expanded(
+                child: groups.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: groups.length,
+                        itemBuilder: (context, index) {
+                          return _buildGroupCard(groups[index], index);
+                        },
+                      ),
+              ),
+
+              // Sticky Bottom Actions
+              _buildStickyActions(context, groups),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -195,7 +296,9 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Widget _buildGroupCard(CattleGroup group, int index) {
-    final medianPrice = countyMedianPrices[group.county] ?? 4.0;
+    // TODO: Fetch real market prices
+    final medianPrice =
+        defaultDesiredPrice; // Was countyMedianPrices[group.county]
     final perHeadDiff = group.calculatePerHeadDifference(medianPrice);
     final isPositive = perHeadDiff >= 0;
 
@@ -379,7 +482,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     );
   }
 
-  Widget _buildStickyActions(BuildContext context) {
+  Widget _buildStickyActions(BuildContext context, List<CattleGroup> groups) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -413,7 +516,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           ),
           const SizedBox(width: 12),
           IconButton.filledTonal(
-            onPressed: _sharePortfolio,
+            onPressed: () => _sharePortfolio(groups),
             icon: const Icon(Icons.share),
             style: IconButton.styleFrom(padding: const EdgeInsets.all(16)),
           ),

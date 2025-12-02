@@ -1,3 +1,8 @@
+/// breed_picker.dart - Emoji-first breed selector widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
 

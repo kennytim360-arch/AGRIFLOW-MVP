@@ -1,39 +1,69 @@
+/// main.dart - Application entry point and provider setup
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// Crashlytics temporarily disabled due to version conflicts
+// import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'config/theme.dart';
-import 'config/supabase_config.dart';
+import 'config/firebase_config.dart';
 import 'screens/main_screen.dart';
 import 'services/auth_service.dart';
 import 'services/portfolio_service.dart';
 import 'services/price_pulse_service.dart';
+import 'services/user_preferences_service.dart';
+import 'services/analytics_service.dart';
+import 'services/validation_tracker_service.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase
+  // Initialize Firebase
   try {
-    print('🚀 Initializing Supabase...');
-    await Supabase.initialize(
-      url: SupabaseConfig.url,
-      anonKey: SupabaseConfig.anonKey,
+    print('🚀 Initializing Firebase...');
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: FirebaseConfig.apiKey,
+        authDomain: FirebaseConfig.authDomain,
+        projectId: FirebaseConfig.projectId,
+        storageBucket: FirebaseConfig.storageBucket,
+        messagingSenderId: FirebaseConfig.messagingSenderId,
+        appId: FirebaseConfig.appId,
+      ),
     );
-    print('✅ Supabase initialized successfully!');
-    print('🔐 Attempting anonymous sign-in...');
+    print('✅ Firebase initialized successfully!');
 
-    // Sign in immediately
+    // Initialize Crashlytics (catches Flutter errors)
+    // Temporarily disabled due to version conflicts with Firebase Core 4.x
+    // FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    // Attempt sign-in immediately
+    print('🔐 Attempting anonymous sign-in...');
     try {
-      final response = await Supabase.instance.client.auth.signInAnonymously();
-      print('✅ Anonymous sign-in successful! User ID: ${response.user?.id}');
-    } catch (authError) {
-      print('❌ Anonymous sign-in FAILED: $authError');
-      print('⚠️  Make sure Anonymous Auth is enabled in Supabase Dashboard!');
+      final auth = FirebaseAuth.instance;
+      final userCredential = await auth.signInAnonymously();
       print(
-        '⚠️  Go to: Authentication → Providers → Anonymous Sign-ins → Toggle ON',
+        '✅ Anonymous sign-in successful! User ID: ${userCredential.user?.uid}',
+      );
+    } on FirebaseAuthException catch (e) {
+      print('❌ Anonymous sign-in FAILED with code: ${e.code}');
+      print('❌ Message: ${e.message}');
+      print(
+        '⚠️ Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
+      );
+    } catch (e) {
+      print('❌ Anonymous sign-in FAILED: $e');
+      print(
+        '⚠️ Make sure "Anonymous" is enabled in Firebase Console -> Authentication -> Sign-in method',
       );
     }
   } catch (e) {
-    print('❌ Supabase initialization failed: $e');
+    print('❌ Firebase initialization failed: $e');
   }
 
   runApp(const MyApp());
@@ -51,14 +81,22 @@ class MyApp extends StatelessWidget {
         ),
         Provider(create: (_) => PortfolioService()),
         Provider(create: (_) => PricePulseService()),
+        ChangeNotifierProvider(create: (_) => UserPreferencesService()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        Provider(create: (_) => AnalyticsService()),
+        Provider(create: (_) => ValidationTrackerService()),
       ],
-      child: MaterialApp(
-        title: 'AgriPulse',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        home: const MainScreen(),
-        debugShowCheckedModeBanner: false,
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'AgriPulse',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const MainScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }

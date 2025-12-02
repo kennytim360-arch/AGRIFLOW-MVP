@@ -1,3 +1,8 @@
+/// constants.dart - Application constants and reference data
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 // 32 Irish Counties
 const List<String> irishCounties = [
   'Antrim',
@@ -34,38 +39,28 @@ const List<String> irishCounties = [
   'Wicklow',
 ];
 
-// Mock county median prices (€/kg) - in production, fetch from Price Pulse
-const Map<String, double> countyMedianPrices = {
-  'Antrim': 4.15,
-  'Armagh': 4.12,
-  'Carlow': 4.18,
-  'Cavan': 4.10,
-  'Clare': 4.20,
-  'Cork': 4.22,
-  'Derry': 4.14,
-  'Donegal': 4.08,
-  'Down': 4.16,
-  'Dublin': 4.25,
-  'Fermanagh': 4.11,
-  'Galway': 4.19,
-  'Kerry': 4.21,
-  'Kildare': 4.23,
-  'Kilkenny': 4.17,
-  'Laois': 4.15,
-  'Leitrim': 4.09,
-  'Limerick': 4.20,
-  'Longford': 4.12,
-  'Louth': 4.16,
-  'Mayo': 4.13,
-  'Meath': 4.18,
-  'Monaghan': 4.11,
-  'Offaly': 4.14,
-  'Roscommon': 4.10,
-  'Sligo': 4.12,
-  'Tipperary': 4.19,
-  'Tyrone': 4.13,
-  'Waterford': 4.17,
-  'Westmeath': 4.15,
-  'Wexford': 4.18,
-  'Wicklow': 4.20,
+/// App version
+const String appVersion = '1.0.0';
+
+/// Firestore collection names
+const String portfoliosCollection = 'portfolios';
+const String pricePulsesCollection = 'price_pulses';
+const String usersCollection = 'users';
+const String preferencesCollection = 'preferences';
+
+/// Weight bucket display names
+const Map<String, String> weightBucketNames = {
+  'w400_500': '400-500 kg',
+  'w500_600': '500-600 kg',
+  'w600_700': '600-700 kg',
+  'w700_plus': '700+ kg',
 };
+
+/// Default values
+const double defaultDesiredPrice = 4.20;
+const int defaultQuantity = 30;
+const String defaultCounty = 'Cork';
+
+// NOTE: County median prices are fetched dynamically from PricePulseService.
+// DO NOT hardcode price data here. Use:
+//   await pricePulseService.getCountyPrices(breed: ..., weightBucket: ...)

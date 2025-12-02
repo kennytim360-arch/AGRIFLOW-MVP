@@ -1,3 +1,8 @@
+/// stat_card.dart - Metric display card widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'custom_card.dart';
 

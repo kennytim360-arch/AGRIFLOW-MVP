@@ -1,9 +1,17 @@
+/// dashboard_screen.dart - Home screen with herd overview and insights
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:agriflow/models/cattle_group.dart';
 import 'package:agriflow/services/portfolio_service.dart';
+import 'package:agriflow/services/price_pulse_service.dart';
+import 'package:agriflow/services/analytics_service.dart';
 import 'package:agriflow/utils/constants.dart';
-import 'package:agriflow/widgets/stat_card.dart';
-import 'package:agriflow/widgets/custom_card.dart';
+import 'package:agriflow/widgets/cards/stat_card.dart';
+import 'package:agriflow/widgets/cards/custom_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -15,21 +23,62 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final PortfolioService _portfolioService = PortfolioService();
   List<CattleGroup> _groups = [];
+  Map<String, double> _marketPrices = {}; // Cache for market prices
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+
+    // Track screen view
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logScreenView(screenName: 'Dashboard');
+      }
+    });
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final groups = await _portfolioService.loadGroups();
-    setState(() {
-      _groups = groups;
-      _isLoading = false;
-    });
+
+    try {
+      // 1. Load groups
+      final groups = await _portfolioService.loadGroups();
+
+      // 2. Load market prices for each group
+      final priceService = Provider.of<PricePulseService>(
+        context,
+        listen: false,
+      );
+      final Map<String, double> prices = {};
+
+      for (var group in groups) {
+        // Use group ID as key, or generate a unique key based on breed/weight/county
+        // Here we just map by group ID for simplicity in the build method
+        if (group.id != null) {
+          final price = await priceService.getMedianPrice(
+            breed: group.breed,
+            weightBucket: group.weightBucket,
+            county: group.county,
+          );
+          prices[group.id!] = price;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
+        _marketPrices = prices;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -41,9 +90,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double avgPriceTarget = 0;
 
     for (var group in _groups) {
-      final medianPrice = countyMedianPrices[group.county] ?? 4.0;
+      // Use fetched market price, or fallback to default if 0.0 (no data)
+      double marketPrice = 0.0;
+      if (group.id != null && _marketPrices.containsKey(group.id)) {
+        marketPrice = _marketPrices[group.id!]!;
+      }
+
+      // If no market data, use default constant
+      if (marketPrice == 0.0) {
+        marketPrice = defaultDesiredPrice;
+      }
+
       totalHead += group.quantity;
-      totalValue += group.calculateKillOutValue(medianPrice);
+      totalValue += group.calculateKillOutValue(marketPrice);
       totalWeight += group.totalWeight;
       avgPriceTarget += group.desiredPricePerKg * group.quantity;
     }

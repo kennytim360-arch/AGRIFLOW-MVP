@@ -1,3 +1,8 @@
+/// weight_bucket_picker.dart - Weight range dropdown selector widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
 
@@ -56,7 +61,7 @@ class WeightBucketPicker extends StatelessWidget {
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

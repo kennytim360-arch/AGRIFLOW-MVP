@@ -1,6 +1,11 @@
+/// trend_mini_chart.dart - 7-day price trend line chart widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:agriflow/widgets/custom_card.dart';
+import 'custom_card.dart';
 import 'package:intl/intl.dart';
 
 class TrendDataPoint {

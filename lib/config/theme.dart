@@ -1,3 +1,8 @@
+/// theme.dart - Application theme configuration (light and dark modes)
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -40,7 +45,6 @@ class AppTheme {
         primary: primaryColor,
         secondary: accentColor,
         surface: surfaceColor,
-        background: backgroundColor,
         error: errorColor,
       ),
       textTheme: TextTheme(
@@ -106,8 +110,7 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         primary: primaryColor,
         secondary: accentColor,
-        surface: Color(0xFF121212), // Slightly lighter than black for cards
-        background: Colors.black,
+        surface: Color(0xFF121212),
         error: errorColor,
       ),
       textTheme: TextTheme(
@@ -192,11 +195,11 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.black,
         indicatorColor: primaryColor.withOpacity(0.2),
-        labelTextStyle: MaterialStateProperty.all(
+        labelTextStyle: WidgetStateProperty.all(
           const TextStyle(color: Colors.white),
         ),
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: primaryColor);
           }
           return const IconThemeData(color: Colors.grey);

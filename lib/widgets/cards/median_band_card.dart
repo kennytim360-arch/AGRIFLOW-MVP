@@ -1,12 +1,13 @@
+/// median_band_card.dart - Price median with confidence band display widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
-import 'package:agriflow/widgets/custom_card.dart';
+import 'custom_card.dart';
 
-enum ConfidenceLevel {
-  high,
-  medium,
-  low,
-}
+enum ConfidenceLevel { high, medium, low }
 
 class MedianBandData {
   final double desiredMedian;
@@ -83,27 +84,24 @@ class MedianBandCard extends StatelessWidget {
               children: [
                 Text(
                   '📊',
-                  style: TextStyle(
-                    fontSize: 48,
-                    color: Colors.grey.shade400,
-                  ),
+                  style: TextStyle(fontSize: 48, color: Colors.grey.shade400),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'Not enough data',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   data == null
                       ? 'No submissions yet'
                       : 'Only ${data!.bandCount} submission${data!.bandCount == 1 ? '' : 's'} (need 5+)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade500,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -120,10 +118,7 @@ class MedianBandCard extends StatelessWidget {
           // Header Row
           Row(
             children: [
-              Text(
-                breed.emoji,
-                style: const TextStyle(fontSize: 28),
-              ),
+              Text(breed.emoji, style: const TextStyle(fontSize: 28)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -132,14 +127,14 @@ class MedianBandCard extends StatelessWidget {
                     Text(
                       breed.displayName,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       '${weightBucket.displayName} · 📍 $county',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -161,11 +156,7 @@ class MedianBandCard extends StatelessWidget {
                 data!.desiredMedian,
                 Colors.blue,
               ),
-              Container(
-                width: 1,
-                height: 50,
-                color: Colors.grey.shade300,
-              ),
+              Container(width: 1, height: 50, color: Colors.grey.shade300),
               _buildPriceColumn(
                 context,
                 'Offered',
@@ -207,8 +198,10 @@ class MedianBandCard extends StatelessWidget {
                   ],
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(6),
@@ -216,9 +209,9 @@ class MedianBandCard extends StatelessWidget {
                   child: Text(
                     '${data!.bandCount} bands',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -240,18 +233,18 @@ class MedianBandCard extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           '€${price.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 32,
-              ),
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 32,
+          ),
         ),
       ],
     );

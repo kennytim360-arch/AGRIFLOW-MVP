@@ -1,9 +1,16 @@
+/// submit_pulse_sheet.dart - Modal bottom sheet for price pulse submissions
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:agriflow/models/cattle_group.dart';
 import 'package:agriflow/models/price_pulse.dart';
-import 'package:agriflow/widgets/breed_picker.dart';
-import 'package:agriflow/widgets/weight_bucket_picker.dart';
-import 'package:agriflow/widgets/county_picker.dart';
+import 'package:agriflow/services/analytics_service.dart';
+import '../inputs/breed_picker.dart';
+import '../inputs/weight_bucket_picker.dart';
+import '../inputs/county_picker.dart';
 
 class SubmitPulseSheet extends StatefulWidget {
   final Function(PricePulse) onSubmit;
@@ -62,16 +69,14 @@ class _SubmitPulseSheetState extends State<SubmitPulseSheet> {
                   children: [
                     Text(
                       'Submit Price Pulse',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Anonymous • Helps everyone',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -100,16 +105,17 @@ class _SubmitPulseSheetState extends State<SubmitPulseSheet> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline,
-                          color: Colors.blue.shade700, size: 24),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade700,
+                        size: 24,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Your submission is anonymous. Help farmers get fair prices by sharing real market data.',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.blue.shade900,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.blue.shade900),
                         ),
                       ),
                     ],
@@ -205,10 +211,7 @@ class _SubmitPulseSheetState extends State<SubmitPulseSheet> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(label, style: Theme.of(context).textTheme.titleMedium),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
@@ -250,15 +253,15 @@ class _SubmitPulseSheetState extends State<SubmitPulseSheet> {
           children: [
             Text(
               '€3.00',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
             ),
             Text(
               '€6.00',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -268,12 +271,21 @@ class _SubmitPulseSheetState extends State<SubmitPulseSheet> {
 
   void _handleSubmit() {
     final pulse = PricePulse(
-      cattleType: _selectedBreed.displayName,
-      locationRegion: _selectedCounty,
-      weightKg: _selectedBucket.averageWeight,
-      desiredPricePerKg: _desiredPrice,
-      offeredPricePerKg: _offeredPrice,
+      breed: _selectedBreed,
+      weightBucket: _selectedBucket,
+      county: _selectedCounty,
+      desiredPrice: _desiredPrice,
+      price: _offeredPrice,
       submissionDate: DateTime.now(),
+    );
+
+    // Track analytics
+    Provider.of<AnalyticsService>(context, listen: false)
+        .logPricePulseSubmitted(
+      breed: _selectedBreed.name,
+      weightBucket: _selectedBucket.name,
+      price: _offeredPrice,
+      county: _selectedCounty,
     );
 
     widget.onSubmit(pulse);

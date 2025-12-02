@@ -51,6 +51,32 @@ A Flutter-based cattle portfolio management and market price tracking app for Ir
    flutter run             # For mobile (with device connected)
    ```
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[📍 PROJECT_MAP.md](docs/PROJECT_MAP.md)** - Start here! Master navigation hub for all components, services, screens, and models
+- **[🚀 ONBOARDING.md](docs/ONBOARDING.md)** - 30-minute quick start guide for new developers
+- **[🏗️ ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, data flow, and architectural patterns
+- **[🎨 WIDGET_CATALOG.md](docs/WIDGET_CATALOG.md)** - Complete reference for all reusable components
+- **[🔧 REFACTORING_GUIDE.md](docs/REFACTORING_GUIDE.md)** - Proposed code improvements and refactoring roadmap
+
+### Quick Links by Role
+
+**New to the project?**
+1. Start with [ONBOARDING.md](docs/ONBOARDING.md) to get set up in 30 minutes
+2. Read [PROJECT_MAP.md](docs/PROJECT_MAP.md) to understand the codebase structure
+
+**Daily development?**
+- Use [PROJECT_MAP.md](docs/PROJECT_MAP.md) as your main reference
+- Check [WIDGET_CATALOG.md](docs/WIDGET_CATALOG.md) before creating new components
+
+**Understanding architecture?**
+- Review [ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design and patterns
+
+**Planning improvements?**
+- See [REFACTORING_GUIDE.md](docs/REFACTORING_GUIDE.md) for proposed code changes
+
 ## Project Structure
 
 ```
@@ -62,6 +88,13 @@ lib/
 ├── utils/            # Constants and utilities
 ├── widgets/          # Reusable UI components
 └── main.dart         # App entry point
+
+docs/
+├── PROJECT_MAP.md          # 📍 Master navigation (start here!)
+├── ONBOARDING.md          # 🚀 30-min quick start
+├── ARCHITECTURE.md        # 🏗️ System design & patterns
+├── WIDGET_CATALOG.md      # 🎨 Component reference
+└── REFACTORING_GUIDE.md   # 🔧 Code improvements
 ```
 
 ## Firebase Setup

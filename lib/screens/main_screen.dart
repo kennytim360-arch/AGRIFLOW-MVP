@@ -1,3 +1,8 @@
+/// main_screen.dart - Main navigation container with bottom navigation bar
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/screens/dashboard_screen.dart';
 import 'package:agriflow/screens/portfolio_screen.dart';

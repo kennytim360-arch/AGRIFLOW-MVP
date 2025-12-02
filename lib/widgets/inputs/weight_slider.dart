@@ -1,3 +1,8 @@
+/// weight_slider.dart - Weight range slider input widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:agriflow/models/cattle_group.dart';
 
@@ -5,11 +10,7 @@ class WeightSlider extends StatelessWidget {
   final WeightBucket value;
   final ValueChanged<WeightBucket> onChanged;
 
-  const WeightSlider({
-    super.key,
-    required this.value,
-    required this.onChanged,
-  });
+  const WeightSlider({super.key, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -50,11 +51,13 @@ class WeightSlider extends StatelessWidget {
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 16),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 28),
             activeTrackColor: Theme.of(context).colorScheme.primary,
-            inactiveTrackColor:
-                Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            inactiveTrackColor: Theme.of(
+              context,
+            ).colorScheme.primary.withOpacity(0.2),
             thumbColor: Theme.of(context).colorScheme.primary,
-            overlayColor:
-                Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            overlayColor: Theme.of(
+              context,
+            ).colorScheme.primary.withOpacity(0.2),
             valueIndicatorColor: Theme.of(context).colorScheme.primary,
             valueIndicatorTextStyle: const TextStyle(
               color: Colors.white,
@@ -76,9 +79,9 @@ class WeightSlider extends StatelessWidget {
             return Text(
               bucket.displayName.split(' ').first,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                    fontSize: 10,
-                  ),
+                color: Colors.grey.shade600,
+                fontSize: 10,
+              ),
             );
           }).toList(),
         ),

@@ -1,3 +1,8 @@
+/// quantity_slider.dart - Animal quantity slider input widget (1-200)
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 
 class QuantitySlider extends StatelessWidget {

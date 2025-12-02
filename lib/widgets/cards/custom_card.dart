@@ -1,3 +1,8 @@
+/// custom_card.dart - Generic reusable card widget
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 
 class CustomCard extends StatelessWidget {

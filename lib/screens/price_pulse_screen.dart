@@ -1,15 +1,22 @@
+/// price_pulse_screen.dart - Market price pulse and analytics screen
+///
+/// Part of AgriFlow - Irish Cattle Portfolio Management
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../services/price_pulse_service.dart';
+import '../services/analytics_service.dart';
 import '../models/price_pulse.dart';
 import '../models/cattle_group.dart';
 import '../utils/constants.dart';
-import '../widgets/price_pulse_filter_bar.dart';
-import '../widgets/median_band_card.dart';
-import '../widgets/trend_mini_chart.dart';
-import '../widgets/county_heatmap_card.dart';
-import '../widgets/submit_pulse_sheet.dart';
+import '../widgets/sheets/price_pulse_filter_bar.dart';
+import '../widgets/cards/median_band_card.dart';
+import '../widgets/cards/trend_mini_chart.dart';
+import '../widgets/cards/county_heatmap_card.dart';
+import '../widgets/cards/price_pulse_feed_card.dart';
+import '../widgets/sheets/submit_pulse_sheet.dart';
 import 'package:share_plus/share_plus.dart';
 
 class PricePulseScreen extends StatefulWidget {
@@ -19,12 +26,17 @@ class PricePulseScreen extends StatefulWidget {
   State<PricePulseScreen> createState() => _PricePulseScreenState();
 }
 
-class _PricePulseScreenState extends State<PricePulseScreen> {
+class _PricePulseScreenState extends State<PricePulseScreen>
+    with SingleTickerProviderStateMixin {
   // Filter state
   Breed _selectedBreed = Breed.charolais;
   WeightBucket _selectedWeight = WeightBucket.w600_700;
   String _selectedCounty = 'Antrim';
   bool _isAllIreland = true;
+
+  // Sorting state
+  late TabController _tabController;
+  String _currentSort = 'hot'; // hot, recent, best
 
   // Auto-refresh timer
   Timer? _refreshTimer;
@@ -32,6 +44,17 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
+
+    // Track screen view
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<AnalyticsService>(context, listen: false)
+            .logScreenView(screenName: 'PricePulse');
+      }
+    });
+
     // Auto-refresh every 30 seconds
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) setState(() {});
@@ -40,8 +63,21 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  void _handleTabChange() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {
+        _currentSort = ['hot', 'recent', 'best'][_tabController.index];
+      });
+
+      // Log analytics
+      Provider.of<AnalyticsService>(context, listen: false)
+          .logPricePulseSortChanged(sortType: _currentSort);
+    }
   }
 
   @override
@@ -51,110 +87,265 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
       listen: false,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Price Pulse'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _handleShare,
-            tooltip: 'Share',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {}),
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Filter Bar
-          PricePulseFilterBar(
-            selectedBreed: _selectedBreed,
-            selectedWeight: _selectedWeight,
-            selectedCounty: _selectedCounty,
-            isAllIreland: _isAllIreland,
-            onBreedChanged: (breed) => setState(() => _selectedBreed = breed),
-            onWeightChanged: (weight) =>
-                setState(() => _selectedWeight = weight),
-            onCountyToggle: () =>
-                setState(() => _isAllIreland = !_isAllIreland),
-            onCountyTap: _showCountyPicker,
-          ),
+    // Choose stream based on current sort
+    Stream<List<PricePulse>> stream;
+    switch (_currentSort) {
+      case 'hot':
+        stream = pricePulseService.getPricePulsesHot();
+        break;
+      case 'recent':
+        stream = pricePulseService.getPricePulsesRecent();
+        break;
+      case 'best':
+        stream = pricePulseService.getPricePulsesBest();
+        break;
+      default:
+        stream = pricePulseService.getPricePulsesHot();
+    }
 
-          // Content
-          Expanded(
-            child: StreamBuilder<List<PricePulse>>(
-              stream: pricePulseService.getPricePulses(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return _buildErrorState(snapshot.error.toString());
-                }
+    return StreamBuilder<List<PricePulse>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        // Prepare data for the UI
+        List<PricePulse> allPulses = [];
+        List<PricePulse> filteredPulses = [];
+        List<PricePulse> cleanedPulses = [];
+        MedianBandData? medianData;
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        if (snapshot.hasData) {
+          allPulses = snapshot.data!;
+          filteredPulses = _filterPulses(allPulses);
+          cleanedPulses = _apply95thPercentileFilter(filteredPulses);
+          medianData = _calculateMedianData(cleanedPulses);
+        }
 
-                final allPulses = snapshot.data ?? [];
-                final filteredPulses = _filterPulses(allPulses);
-                final cleanedPulses = _apply95thPercentileFilter(
-                  filteredPulses,
-                );
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {});
-                    await Future.delayed(const Duration(milliseconds: 500));
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // Median Band Card
-                      MedianBandCard(
-                        breed: _selectedBreed,
-                        weightBucket: _selectedWeight,
-                        county: _isAllIreland ? 'All Ireland' : _selectedCounty,
-                        data: _calculateMedianData(cleanedPulses),
-                        isLoading: false,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Trend Chart
-                      TrendMiniChart(
-                        data: _calculateTrendData(cleanedPulses),
-                        isLoading: false,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // County Heatmap
-                      CountyHeatmapCard(
-                        countyData: _calculateCountyData(allPulses),
-                        nationalMedian: _calculateNationalMedian(allPulses),
-                        isLoading: false,
-                        onCountyTap: (county) {
-                          setState(() {
-                            _selectedCounty = county;
-                            _isAllIreland = false;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 80), // Space for FAB
-                    ],
-                  ),
-                );
-              },
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Price Pulse'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: () => _handleShare(medianData),
+                tooltip: 'Share',
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => setState(() {}),
+                tooltip: 'Refresh',
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              labelColor: Theme.of(context).primaryColor,
+              unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
+              indicatorColor: Theme.of(context).primaryColor,
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.local_fire_department),
+                  text: 'Hot',
+                ),
+                Tab(
+                  icon: Icon(Icons.access_time),
+                  text: 'Recent',
+                ),
+                Tab(
+                  icon: Icon(Icons.star),
+                  text: 'Best',
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showSubmitPulseSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Submit Pulse'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
+          body: Column(
+            children: [
+              // Compact Filter Button
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                    ),
+                  ),
+                ),
+                child: InkWell(
+                  onTap: _showFilterSheet,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.filter_list,
+                          color: Theme.of(context).primaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '${_selectedBreed.emoji} ${_selectedBreed.displayName} • ${_selectedWeight.displayName} • ${_isAllIreland ? "🇮🇪 All Ireland" : "📍 $_selectedCounty"}',
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    if (snapshot.hasError) {
+                      return _buildErrorState(snapshot.error.toString());
+                    }
+
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (filteredPulses.isEmpty) {
+                      return _buildEmptyState();
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        setState(() {});
+                        await Future.delayed(const Duration(milliseconds: 500));
+                      },
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(top: 8, bottom: 100),
+                        itemCount: filteredPulses.length + 4, // +4 for analytics cards
+                        itemBuilder: (context, index) {
+                          // First show individual price feed cards
+                          if (index < filteredPulses.length) {
+                            return PricePulseFeedCard(
+                              pulse: filteredPulses[index],
+                            );
+                          }
+
+                          // After feed, show aggregated analytics
+                          final analyticsIndex = index - filteredPulses.length;
+
+                          if (analyticsIndex == 0) {
+                            // Section divider
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 24,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Text(
+                                      'Market Analytics',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.color,
+                                          ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+                            );
+                          } else if (analyticsIndex == 1) {
+                            // Median Band Card
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: MedianBandCard(
+                                breed: _selectedBreed,
+                                weightBucket: _selectedWeight,
+                                county: _isAllIreland
+                                    ? 'All Ireland'
+                                    : _selectedCounty,
+                                data: medianData,
+                                isLoading: false,
+                              ),
+                            );
+                          } else if (analyticsIndex == 2) {
+                            // Trend Chart
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: TrendMiniChart(
+                                data: _calculateTrendData(cleanedPulses),
+                                isLoading: false,
+                              ),
+                            );
+                          } else if (analyticsIndex == 3) {
+                            // County Heatmap
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: CountyHeatmapCard(
+                                countyData: _calculateCountyData(allPulses),
+                                nationalMedian:
+                                    _calculateNationalMedian(allPulses),
+                                isLoading: false,
+                                onCountyTap: (county) {
+                                  setState(() {
+                                    _selectedCounty = county;
+                                    _isAllIreland = false;
+                                  });
+                                },
+                              ),
+                            );
+                          }
+
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showSubmitPulseSheet(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Submit Pulse'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      },
     );
   }
 
@@ -162,17 +353,13 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
   List<PricePulse> _filterPulses(List<PricePulse> pulses) {
     return pulses.where((pulse) {
       // Match breed
-      if (pulse.cattleType != _selectedBreed.displayName) return false;
+      if (pulse.breed != _selectedBreed) return false;
 
-      // Match weight bucket (with tolerance)
-      final weightLower = _selectedWeight.averageWeight - 50;
-      final weightUpper = _selectedWeight.averageWeight + 50;
-      if (pulse.weightKg < weightLower || pulse.weightKg > weightUpper) {
-        return false;
-      }
+      // Match weight bucket
+      if (pulse.weightBucket != _selectedWeight) return false;
 
       // Match county (if not All Ireland)
-      if (!_isAllIreland && pulse.locationRegion != _selectedCounty) {
+      if (!_isAllIreland && pulse.county != _selectedCounty) {
         return false;
       }
 
@@ -186,7 +373,7 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
 
     // Sort by offered price
     final sorted = List<PricePulse>.from(pulses)
-      ..sort((a, b) => a.offeredPricePerKg.compareTo(b.offeredPricePerKg));
+      ..sort((a, b) => a.price.compareTo(b.price));
 
     // Remove bottom 2.5% and top 2.5%
     final removeCount = (sorted.length * 0.025).ceil();
@@ -200,10 +387,8 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
   MedianBandData? _calculateMedianData(List<PricePulse> pulses) {
     if (pulses.isEmpty) return null;
 
-    final desiredPrices = pulses.map((p) => p.desiredPricePerKg).toList()
-      ..sort();
-    final offeredPrices = pulses.map((p) => p.offeredPricePerKg).toList()
-      ..sort();
+    final desiredPrices = pulses.map((p) => p.desiredPrice).toList()..sort();
+    final offeredPrices = pulses.map((p) => p.price).toList()..sort();
 
     final desiredMedian = _calculateMedian(desiredPrices);
     final offeredMedian = _calculateMedian(offeredPrices);
@@ -279,10 +464,9 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
           ),
         );
       } else {
-        final desiredPrices =
-            entry.value.map((p) => p.desiredPricePerKg).toList()..sort();
-        final offeredPrices =
-            entry.value.map((p) => p.offeredPricePerKg).toList()..sort();
+        final desiredPrices = entry.value.map((p) => p.desiredPrice).toList()
+          ..sort();
+        final offeredPrices = entry.value.map((p) => p.price).toList()..sort();
         trendData.add(
           TrendDataPoint(
             date: entry.key,
@@ -300,17 +484,16 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
   List<CountyPriceData> _calculateCountyData(List<PricePulse> allPulses) {
     // Filter for selected breed and weight only
     final filtered = allPulses.where((pulse) {
-      if (pulse.cattleType != _selectedBreed.displayName) return false;
-      final weightLower = _selectedWeight.averageWeight - 50;
-      final weightUpper = _selectedWeight.averageWeight + 50;
-      return pulse.weightKg >= weightLower && pulse.weightKg <= weightUpper;
+      if (pulse.breed != _selectedBreed) return false;
+      if (pulse.weightBucket != _selectedWeight) return false;
+      return true;
     }).toList();
 
     // Group by county
     final Map<String, List<double>> countyPrices = {};
     for (var pulse in filtered) {
-      countyPrices.putIfAbsent(pulse.locationRegion, () => []);
-      countyPrices[pulse.locationRegion]!.add(pulse.offeredPricePerKg);
+      countyPrices.putIfAbsent(pulse.county, () => []);
+      countyPrices[pulse.county]!.add(pulse.price);
     }
 
     // Calculate median for each county
@@ -331,7 +514,7 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
 
   double _calculateNationalMedian(List<PricePulse> allPulses) {
     if (allPulses.isEmpty) return 4.10;
-    final prices = allPulses.map((p) => p.offeredPricePerKg).toList()..sort();
+    final prices = allPulses.map((p) => p.price).toList()..sort();
     return _calculateMedian(prices);
   }
 
@@ -349,6 +532,88 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
         onSubmit: (pulse) {
           pricePulseService.addPricePulse(pulse);
         },
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.filter_list,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Filter Prices',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Filter Content
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: PricePulseFilterBar(
+                selectedBreed: _selectedBreed,
+                selectedWeight: _selectedWeight,
+                selectedCounty: _selectedCounty,
+                isAllIreland: _isAllIreland,
+                onBreedChanged: (breed) {
+                  setState(() => _selectedBreed = breed);
+                },
+                onWeightChanged: (weight) {
+                  setState(() => _selectedWeight = weight);
+                },
+                onCountyToggle: () {
+                  setState(() => _isAllIreland = !_isAllIreland);
+                },
+                onCountyTap: () {
+                  Navigator.pop(context);
+                  _showCountyPicker();
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -389,8 +654,7 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
     );
   }
 
-  void _handleShare() {
-    final data = _calculateMedianData([]);
+  void _handleShare(MedianBandData? data) {
     if (data != null) {
       final text =
           '${_selectedBreed.emoji} ${_selectedBreed.displayName} ${_selectedWeight.displayName} – offered €${data.offeredMedian.toStringAsFixed(2)} in ${_isAllIreland ? 'Ireland' : _selectedCounty} today 🐄 #ForFarmers';
@@ -423,6 +687,41 @@ class _PricePulseScreenState extends State<PricePulseScreen> {
               onPressed: () => setState(() {}),
               icon: const Icon(Icons.refresh),
               label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.feed_outlined,
+              size: 64,
+              color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No prices yet',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Be the first to submit a price for ${_selectedBreed.name} ${_selectedWeight.name}',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _showSubmitPulseSheet(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Submit First Price'),
             ),
           ],
         ),
