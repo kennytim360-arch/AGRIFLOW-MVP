@@ -1,0 +1,8 @@
+# Example Android signing configuration
+# Copy this to key.properties and fill in your actual values
+# DO NOT commit key.properties to version control
+
+storePassword=YOUR_KEYSTORE_PASSWORD_HERE
+keyPassword=YOUR_KEY_PASSWORD_HERE
+keyAlias=agriflow
+storeFile=agriflow-release.keystore
