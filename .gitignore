@@ -46,6 +46,19 @@ app.*.map.json
 # Firebase config (add your own and don't commit)
 lib/config/firebase_config.dart
 lib/config/supabase_config.dart
+**/google-services.json
+**/GoogleService-Info.plist
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Environment & Secrets
+.env
+.env.*
+*.keystore
+*.jks
+android/key.properties
+ios/Runner/Config.xcconfig
 
 # Windows
 *.exe
