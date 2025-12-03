@@ -4,6 +4,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/constants.dart';
 
 // Animal Type - First Selection
 enum AnimalType {
@@ -104,9 +105,9 @@ class CattleGroup {
   // Calculate total weight
   double get totalWeight => quantity * weightBucket.averageWeight;
 
-  // Calculate kill-out value (55% dressing percentage)
+  // Calculate kill-out value (using standard dressing percentage)
   double calculateKillOutValue(double currentMarketPrice) {
-    return totalWeight * 0.55 * currentMarketPrice;
+    return totalWeight * dressingPercentage * currentMarketPrice;
   }
 
   // Calculate breed premium

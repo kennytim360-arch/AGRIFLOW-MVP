@@ -10,6 +10,9 @@ import 'package:agriflow/services/portfolio_service.dart';
 import 'package:agriflow/services/price_pulse_service.dart';
 import 'package:agriflow/services/analytics_service.dart';
 import 'package:agriflow/utils/constants.dart';
+import 'package:agriflow/utils/logger.dart';
+import 'package:agriflow/utils/snackbar_helper.dart';
+import 'package:agriflow/utils/error_handler.dart';
 import 'package:agriflow/widgets/cards/stat_card.dart';
 import 'package:agriflow/widgets/cards/custom_card.dart';
 
@@ -75,9 +78,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading dashboard data: $e');
+      Logger.error('Error loading dashboard data', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
+
+      // Show error with retry option if it's a network error
+      if (ErrorHandler.isNetworkError(e)) {
+        SnackBarHelper.showErrorWithRetry(
+          context,
+          'Network error loading dashboard. Pull to refresh or tap retry.',
+          _loadData,
+        );
+      } else {
+        SnackBarHelper.showError(
+          context,
+          'Failed to load dashboard: ${ErrorHandler.getGenericErrorMessage(e)}',
+        );
+      }
     }
   }
 

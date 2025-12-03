@@ -8,11 +8,31 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/cattle_group.dart';
 import '../utils/constants.dart';
+import '../utils/logger.dart';
+import 'price_pulse_service.dart';
 
 class PDFExportService {
   /// Generate and share a PDF of the herd portfolio
-  Future<void> exportPortfolio(List<CattleGroup> groups) async {
+  Future<void> exportPortfolio(
+    List<CattleGroup> groups,
+    PricePulseService priceService,
+  ) async {
     final pdf = pw.Document();
+
+    // Fetch real market prices for each group
+    final Map<String, double> groupPrices = {};
+    for (var group in groups) {
+      if (group.id != null) {
+        final price = await priceService.getMedianPrice(
+          breed: group.breed,
+          weightBucket: group.weightBucket,
+          county: group.county,
+        );
+        groupPrices[group.id!] = price > 0 ? price : defaultDesiredPrice;
+      }
+    }
+
+    Logger.info('Fetched prices for ${groupPrices.length} groups for PDF export');
 
     // Calculate totals
     double totalValue = 0;
@@ -20,9 +40,9 @@ class PDFExportService {
     double totalWeight = 0;
 
     for (var group in groups) {
-      // TODO: Fetch real market prices
-      final medianPrice =
-          defaultDesiredPrice; // Was countyMedianPrices[group.county]
+      final medianPrice = group.id != null && groupPrices.containsKey(group.id)
+          ? groupPrices[group.id!]!
+          : defaultDesiredPrice;
       totalValue += group.calculateKillOutValue(medianPrice);
       totalHead += group.quantity;
       totalWeight += group.totalWeight;
