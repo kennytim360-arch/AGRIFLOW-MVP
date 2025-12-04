@@ -97,8 +97,7 @@ void main() {
       final killOutValue = group.calculateKillOutValue(marketPrice);
 
       // Expected: 10 * 650 * 0.55 * 4.0 = 14,300
-      expect(killOutValue, 6500 * dressingPercentage * marketPrice);
-      expect(killOutValue, 14300.0);
+      expect(killOutValue, closeTo(14300.0, 0.01));
     });
 
     test('calculateBreedPremium uses breed multiplier correctly', () {
@@ -131,7 +130,7 @@ void main() {
       final difference = group.calculateMarketDifference(countyMedianPrice);
 
       // Expected: 6500 * (4.50 - 4.20) = 6500 * 0.30 = 1,950
-      expect(difference, 1950.0);
+      expect(difference, closeTo(1950.0, 0.01));
     });
 
     test('calculatePerHeadDifference calculates per-animal price gap', () {
@@ -147,7 +146,7 @@ void main() {
       final perHeadDiff = group.calculatePerHeadDifference(countyMedianPrice);
 
       // Expected: 650 * (4.50 - 4.20) = 650 * 0.30 = 195
-      expect(perHeadDiff, 195.0);
+      expect(perHeadDiff, closeTo(195.0, 0.01));
     });
 
     test('serialization round-trip preserves data', () {
