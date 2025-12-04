@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_preferences.dart';
+import '../utils/logger.dart';
 
 class UserPreferencesService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -30,7 +31,7 @@ class UserPreferencesService extends ChangeNotifier {
   Future<void> loadPreferences() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('⚠️ User not signed in, using defaults');
+      Logger.warning('User not signed in, using defaults');
       _preferences = UserPreferences.defaults();
       notifyListeners();
       return;
@@ -47,15 +48,15 @@ class UserPreferencesService extends ChangeNotifier {
 
       if (doc.exists) {
         _preferences = UserPreferences.fromMap(doc.data()!);
-        print('✅ Loaded user preferences');
+        Logger.success('Loaded user preferences');
       } else {
         // First time user - create default preferences
         _preferences = UserPreferences.defaults();
         await savePreferences(_preferences);
-        print('✅ Created default preferences');
+        Logger.success('Created default preferences');
       }
     } catch (e) {
-      print('❌ Error loading preferences: $e');
+      Logger.error('Error loading preferences', e);
       _preferences = UserPreferences.defaults();
     } finally {
       _isLoading = false;
@@ -67,7 +68,7 @@ class UserPreferencesService extends ChangeNotifier {
   Stream<UserPreferences> getPreferencesStream() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('⚠️ User not signed in, returning defaults stream');
+      Logger.warning('User not signed in, returning defaults stream');
       return Stream.value(UserPreferences.defaults());
     }
 
@@ -88,7 +89,7 @@ class UserPreferencesService extends ChangeNotifier {
   Future<void> savePreferences(UserPreferences prefs) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
-      print('❌ Not authenticated, cannot save preferences');
+      Logger.error('Not authenticated, cannot save preferences', null);
       return;
     }
 
@@ -100,9 +101,9 @@ class UserPreferencesService extends ChangeNotifier {
 
       _preferences = prefs;
       notifyListeners();
-      print('✅ Preferences saved');
+      Logger.success('Preferences saved');
     } catch (e) {
-      print('❌ Error saving preferences: $e');
+      Logger.error('Error saving preferences', e);
     }
   }
 

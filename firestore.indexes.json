@@ -53,6 +53,86 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "county",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submission_date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hot_score",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "county",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hot_score",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pricePulses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "breed",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "weight_bucket",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "validation_count",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

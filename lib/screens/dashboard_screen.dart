@@ -24,7 +24,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final PortfolioService _portfolioService = PortfolioService();
   List<CattleGroup> _groups = [];
   Map<String, double> _marketPrices = {}; // Cache for market prices
   bool _isLoading = true;
@@ -49,7 +48,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       // 1. Load groups
-      final groups = await _portfolioService.loadGroups();
+      final portfolioService = Provider.of<PortfolioService>(
+        context,
+        listen: false,
+      );
+      final groups = await portfolioService.loadGroups();
 
       // 2. Load market prices for each group
       final priceService = Provider.of<PricePulseService>(
