@@ -179,6 +179,11 @@ class AuthService extends ChangeNotifier {
 
   /// Delete user account and all associated data
   /// GDPR compliance - user can request data deletion
+  /// This permanently deletes:
+  /// - All portfolios (cattle groups)
+  /// - All preferences
+  /// - User document
+  /// - Firebase Auth account
   Future<bool> deleteUserAccount() async {
     try {
       if (_user == null) {
@@ -188,13 +193,47 @@ class AuthService extends ChangeNotifier {
 
       final userId = _user!.uid;
 
-      // Delete user document (triggers Cloud Function to delete subcollections)
+      Logger.debug("Starting account deletion for user: $userId");
+
+      // Step 1: Delete all portfolios subcollection
+      Logger.debug("Deleting portfolios...");
+      final portfoliosSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('portfolios')
+          .get();
+
+      for (var doc in portfoliosSnapshot.docs) {
+        await doc.reference.delete();
+        Logger.debug("Deleted portfolio: ${doc.id}");
+      }
+      Logger.success("Deleted ${portfoliosSnapshot.docs.length} portfolios");
+
+      // Step 2: Delete all preferences subcollection
+      Logger.debug("Deleting preferences...");
+      final preferencesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('preferences')
+          .get();
+
+      for (var doc in preferencesSnapshot.docs) {
+        await doc.reference.delete();
+        Logger.debug("Deleted preference: ${doc.id}");
+      }
+      Logger.success("Deleted ${preferencesSnapshot.docs.length} preferences");
+
+      // Step 3: Delete user document
+      Logger.debug("Deleting user document...");
       await _firestore.collection('users').doc(userId).delete();
+      Logger.success("User document deleted");
 
-      // Delete Firebase Auth user
+      // Step 4: Delete Firebase Auth user
+      Logger.debug("Deleting Firebase Auth user...");
       await _user!.delete();
+      Logger.success("Firebase Auth user deleted");
 
-      Logger.success("User account deleted: $userId");
+      Logger.success("User account fully deleted: $userId");
 
       return true;
     } on FirebaseAuthException catch (e) {
@@ -207,6 +246,73 @@ class AuthService extends ChangeNotifier {
       Logger.error("Error deleting account", e);
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Export all user data (GDPR Article 20 - Right to Data Portability)
+  /// Returns a Map containing all user data in JSON-serializable format
+  Future<Map<String, dynamic>> exportUserData() async {
+    try {
+      if (_user == null) {
+        throw Exception('No user to export data for');
+      }
+
+      final userId = _user!.uid;
+
+      Logger.debug("Starting data export for user: $userId");
+
+      // Export user document
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userData = userDoc.exists ? userDoc.data() : {};
+
+      // Export all portfolios
+      final portfoliosSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('portfolios')
+          .get();
+
+      final portfolios = portfoliosSnapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                ...doc.data(),
+              })
+          .toList();
+
+      // Export all preferences
+      final preferencesSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('preferences')
+          .get();
+
+      final preferences = preferencesSnapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                ...doc.data(),
+              })
+          .toList();
+
+      final exportData = {
+        'user_id': userId,
+        'email': _user!.email,
+        'is_anonymous': _user!.isAnonymous,
+        'created_at': _user!.metadata.creationTime?.toIso8601String(),
+        'last_sign_in': _user!.metadata.lastSignInTime?.toIso8601String(),
+        'export_date': DateTime.now().toIso8601String(),
+        'user_data': userData,
+        'portfolios': portfolios,
+        'preferences': preferences,
+        'total_portfolios': portfolios.length,
+        'total_preferences': preferences.length,
+      };
+
+      Logger.success("Data export completed: ${portfolios.length} portfolios, ${preferences.length} preferences");
+
+      return exportData;
+    } catch (e) {
+      Logger.error("Error exporting user data", e);
+      rethrow;
     }
   }
 

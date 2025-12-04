@@ -53,16 +53,6 @@
           "order": "ASCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "portfolios",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "created_at",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": []

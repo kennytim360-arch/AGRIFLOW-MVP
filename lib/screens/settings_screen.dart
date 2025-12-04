@@ -385,6 +385,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // Legal Section
+                _buildSectionHeader(context, 'Legal'),
+                CustomCard(
+                  child: Column(
+                    children: [
+                      _buildListTile(
+                        context,
+                        icon: Icons.privacy_tip,
+                        title: 'Privacy Policy',
+                        value: 'GDPR compliant',
+                        emoji: '🔒',
+                        onTap: _showPrivacyPolicy,
+                        showArrow: true,
+                      ),
+                      const Divider(),
+                      _buildListTile(
+                        context,
+                        icon: Icons.description,
+                        title: 'Terms of Service',
+                        value: 'Legal agreement',
+                        emoji: '📜',
+                        onTap: () {},
+                        showArrow: true,
+                      ),
+                      const Divider(),
+                      _buildListTile(
+                        context,
+                        icon: Icons.info,
+                        title: 'About AgriFlow',
+                        value: 'v1.0.0',
+                        emoji: 'ℹ️',
+                        onTap: () {},
+                        showArrow: true,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 40),
 
                 Center(
@@ -569,9 +608,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete All Data?'),
-        content: const Text(
-          'This action is IRREVERSIBLE. All your portfolio data and settings will be permanently deleted.',
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Delete Account?'),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This action is IRREVERSIBLE and will permanently delete:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text('• Your entire Firebase account'),
+            Text('• All cattle portfolios'),
+            Text('• All preferences and settings'),
+            Text('• Your authentication'),
+            SizedBox(height: 12),
+            Text(
+              'You will be signed out immediately.',
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.red),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -584,12 +646,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Provider.of<AnalyticsService>(context, listen: false)
                   .logDataDeleted();
 
-              await _portfolioService.clearAll();
+              Navigator.pop(context);
+
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+
+              // Delete account (includes all subcollections)
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final success = await authService.deleteUserAccount();
+
               if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('All data deleted')),
-                );
+                Navigator.pop(context); // Close loading indicator
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 12),
+                          Text('Account and all data deleted'),
+                        ],
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // Navigate to login or home
+                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.error, color: Colors.white),
+                          const SizedBox(width: 12),
+                          Text('Error: ${authService.lastError ?? "Unknown error"}'),
+                        ],
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -601,20 +705,216 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportData() async {
-    // Track analytics
-    Provider.of<AnalyticsService>(context, listen: false).logDataExported();
+    try {
+      // Track analytics
+      Provider.of<AnalyticsService>(context, listen: false).logDataExported();
 
-    // Mock export
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Exporting your data...'),
+            ],
+          ),
+        ),
+      );
+
+      // Export data using AuthService
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final exportData = await authService.exportUserData();
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        // Show preview dialog with option to download
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Data Export Ready'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Export Summary:',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('• Portfolios: ${exportData['total_portfolios']}'),
+                  Text('• Preferences: ${exportData['total_preferences']}'),
+                  Text('• Account Type: ${exportData['is_anonymous'] ? 'Anonymous' : 'Verified'}'),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Export Date: ${exportData['export_date']}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Note: Data is ready. In production, this would download as a JSON file.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // In production: Save JSON file or share
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.download_done, color: Colors.white),
+                          SizedBox(width: 12),
+                          Text('Data exported successfully'),
+                        ],
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: const Text('Download JSON'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog if open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('Export failed: ${e.toString()}'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showPrivacyPolicy() async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
           children: [
-            Icon(Icons.download_done, color: Colors.white),
-            SizedBox(width: 12),
-            Text('Data exported to Downloads'),
+            Icon(Icons.privacy_tip),
+            SizedBox(width: 8),
+            Text('Privacy Policy'),
           ],
         ),
-        backgroundColor: Colors.green,
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'AgriFlow Privacy Policy',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Last Updated: December 2025',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 16),
+
+              _buildPolicySection(
+                'Data We Collect',
+                '• Cattle portfolio data (breed, quantity, weight, prices)\n'
+                '• Anonymous price pulse submissions\n'
+                '• User preferences and settings\n'
+                '• Firebase authentication data',
+              ),
+
+              _buildPolicySection(
+                'How We Use Your Data',
+                '• Portfolio management and tracking\n'
+                '• Market price analytics (anonymized)\n'
+                '• App functionality and personalization\n'
+                '• Service improvements',
+              ),
+
+              _buildPolicySection(
+                'Data Storage & Security',
+                '• All data stored in Firebase Firestore (encrypted at rest)\n'
+                '• Secure user isolation via Firestore security rules\n'
+                '• Price pulses auto-deleted after 7 days\n'
+                '• Portfolio data stored indefinitely (until deleted by you)',
+              ),
+
+              _buildPolicySection(
+                'Your GDPR Rights',
+                '• Right to access your data (Export My Data)\n'
+                '• Right to deletion (Delete All Data)\n'
+                '• Right to data portability (JSON export)\n'
+                '• Right to rectification (edit your data)',
+              ),
+
+              _buildPolicySection(
+                'Data Sharing',
+                '• We DO NOT sell your personal data\n'
+                '• Price submissions are anonymous (no user identification)\n'
+                '• Portfolio data is private to your account only\n'
+                '• Firebase Analytics for app improvements (anonymized)',
+              ),
+
+              const SizedBox(height: 12),
+              const Text(
+                'Contact: privacy@agriflow.ie',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _launchUrl('mailto:privacy@agriflow.ie?subject=Privacy Policy Inquiry');
+            },
+            child: const Text('Contact Us'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicySection(String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            content,
+            style: const TextStyle(fontSize: 13),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,4 @@
-package com.example.agriflow
+package ie.agriflow.app
 
 import io.flutter.embedding.android.FlutterActivity
 
