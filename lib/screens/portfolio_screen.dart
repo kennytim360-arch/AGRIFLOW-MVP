@@ -26,8 +26,7 @@ class PortfolioScreen extends StatefulWidget {
 }
 
 class _PortfolioScreenState extends State<PortfolioScreen> {
-  final PortfolioService _portfolioService = PortfolioService();
-  final PDFExportService _pdfService = PDFExportService();
+  // Services accessed via Provider - no local instances
 
   @override
   void initState() {
@@ -43,7 +42,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Future<void> _addNewGroup(CattleGroup group) async {
     try {
-      await _portfolioService.addGroup(group);
+      final portfolioService = Provider.of<PortfolioService>(context, listen: false);
+      await portfolioService.addGroup(group);
 
       // Track analytics
       if (mounted) {
@@ -72,7 +72,8 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   Future<void> _removeGroup(String id) async {
     try {
-      await _portfolioService.removeGroup(id);
+      final portfolioService = Provider.of<PortfolioService>(context, listen: false);
+      await portfolioService.removeGroup(id);
 
       // Track analytics
       if (mounted) {
@@ -155,11 +156,14 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get services via Provider
+    final portfolioService = Provider.of<PortfolioService>(context, listen: false);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Herd'),
         actions: [
-          // DEBUG: Show User ID or Login Button
+          // Show authentication status indicator
           Consumer<AuthService>(
             builder: (context, auth, _) {
               if (auth.user != null) {
@@ -198,7 +202,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
           ),
           // PDF Export Button - needs groups from stream
           StreamBuilder<List<CattleGroup>>(
-            stream: _portfolioService.getGroupsStream(),
+            stream: portfolioService.getGroupsStream(),
             builder: (context, snapshot) {
               final groups = snapshot.data ?? [];
               return IconButton(
@@ -211,7 +215,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         ],
       ),
       body: StreamBuilder<List<CattleGroup>>(
-        stream: _portfolioService.getGroupsStream(),
+        stream: portfolioService.getGroupsStream(),
         builder: (context, snapshot) {
           // Handle loading state
           if (snapshot.connectionState == ConnectionState.waiting) {

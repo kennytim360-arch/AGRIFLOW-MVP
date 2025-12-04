@@ -14,6 +14,13 @@ class PricePulseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Default pagination limit for price pulse queries
+  static const int defaultLimit = 50;
+
+  /// Rate limiting: Minimum time between submissions (5 minutes)
+  static const Duration minSubmissionInterval = Duration(minutes: 5);
+  DateTime? _lastSubmissionTime;
+
   /// Get the Firestore path for public price pulses
   /// Path: pricePulses
   String _getPublicPath() {
@@ -21,7 +28,8 @@ class PricePulseService {
   }
 
   /// Get price pulses from the last 7 days as a stream
-  Stream<List<PricePulse>> getPricePulses() {
+  /// [limit] - Maximum number of pulses to fetch (default: 50)
+  Stream<List<PricePulse>> getPricePulses({int limit = defaultLimit}) {
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
 
     return _firestore
@@ -31,6 +39,7 @@ class PricePulseService {
           isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
         )
         .orderBy('submission_date', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -40,12 +49,27 @@ class PricePulseService {
   }
 
   /// Add a new price pulse (anonymous submission)
+  /// Throws an exception if rate limit is exceeded
   Future<void> addPricePulse(PricePulse pulse) async {
     try {
       // Verify user is authenticated (but don't store user ID for anonymity)
       if (_auth.currentUser == null) {
         Logger.error('User not authenticated, cannot submit pulse');
-        return;
+        throw Exception('User not authenticated');
+      }
+
+      // Rate limiting check
+      if (_lastSubmissionTime != null) {
+        final timeSinceLastSubmission = DateTime.now().difference(_lastSubmissionTime!);
+        if (timeSinceLastSubmission < minSubmissionInterval) {
+          final remainingTime = minSubmissionInterval - timeSinceLastSubmission;
+          final remainingMinutes = remainingTime.inMinutes;
+          final remainingSeconds = remainingTime.inSeconds % 60;
+          Logger.warning('Rate limit: Please wait before submitting again');
+          throw Exception(
+            'Please wait $remainingMinutes minutes and $remainingSeconds seconds before submitting again'
+          );
+        }
       }
 
       final data = pulse.toMap();
@@ -59,9 +83,14 @@ class PricePulseService {
       data['submitted_by'] = _auth.currentUser!.uid; // For security validation
 
       await _firestore.collection(_getPublicPath()).add(data);
+
+      // Update last submission time on success
+      _lastSubmissionTime = DateTime.now();
+
       Logger.success('Price pulse submitted successfully');
     } catch (e) {
       Logger.error('Error adding price pulse', e);
+      rethrow; // Re-throw to allow UI to handle the error
     }
   }
 
@@ -285,7 +314,8 @@ class PricePulseService {
 
   /// Get price pulses sorted by HOT (Reddit-style algorithm)
   /// Hot = high engagement + recency
-  Stream<List<PricePulse>> getPricePulsesHot() {
+  /// [limit] - Maximum number of pulses to fetch (default: 50)
+  Stream<List<PricePulse>> getPricePulsesHot({int limit = defaultLimit}) {
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
 
     return _firestore
@@ -295,6 +325,7 @@ class PricePulseService {
           isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
         )
         .orderBy('submission_date', descending: true) // Required for where clause
+        .limit(limit * 2) // Fetch more to ensure enough after sorting
         .snapshots()
         .map((snapshot) {
           final pulses = snapshot.docs
@@ -303,13 +334,15 @@ class PricePulseService {
 
           // Sort by hot score in memory (to avoid compound index)
           pulses.sort((a, b) => b.hotScore.compareTo(a.hotScore));
-          return pulses;
+          // Return only the requested limit after sorting
+          return pulses.take(limit).toList();
         });
   }
 
   /// Get price pulses sorted by RECENT (newest first)
   /// Recent = submission_date descending
-  Stream<List<PricePulse>> getPricePulsesRecent() {
+  /// [limit] - Maximum number of pulses to fetch (default: 50)
+  Stream<List<PricePulse>> getPricePulsesRecent({int limit = defaultLimit}) {
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
 
     return _firestore
@@ -319,6 +352,7 @@ class PricePulseService {
           isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
         )
         .orderBy('submission_date', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -329,7 +363,8 @@ class PricePulseService {
 
   /// Get price pulses sorted by BEST (highest net score)
   /// Best = validationCount - flagCount (all time best)
-  Stream<List<PricePulse>> getPricePulsesBest() {
+  /// [limit] - Maximum number of pulses to fetch (default: 50)
+  Stream<List<PricePulse>> getPricePulsesBest({int limit = defaultLimit}) {
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
 
     return _firestore
@@ -339,6 +374,7 @@ class PricePulseService {
           isGreaterThan: Timestamp.fromDate(sevenDaysAgo),
         )
         .orderBy('submission_date', descending: true) // Required for where clause
+        .limit(limit * 2) // Fetch more to ensure enough after sorting
         .snapshots()
         .map((snapshot) {
           final pulses = snapshot.docs
@@ -347,7 +383,8 @@ class PricePulseService {
 
           // Sort by net score in memory (to avoid compound index)
           pulses.sort((a, b) => b.netScore.compareTo(a.netScore));
-          return pulses;
+          // Return only the requested limit after sorting
+          return pulses.take(limit).toList();
         });
   }
 }
