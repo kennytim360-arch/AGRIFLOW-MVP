@@ -5,6 +5,7 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/price_pulse.dart';
 import '../models/cattle_group.dart';
 import '../utils/logger.dart';
@@ -19,7 +20,9 @@ class PricePulseService {
 
   /// Rate limiting: Minimum time between submissions (5 minutes)
   static const Duration minSubmissionInterval = Duration(minutes: 5);
-  DateTime? _lastSubmissionTime;
+
+  /// SharedPreferences key for persisting last submission time
+  static const String _lastSubmissionKey = 'last_price_pulse_submission';
 
   /// Get the Firestore path for public price pulses
   /// Path: pricePulses
@@ -50,6 +53,7 @@ class PricePulseService {
 
   /// Add a new price pulse (anonymous submission)
   /// Throws an exception if rate limit is exceeded
+  /// Uses SharedPreferences for persistent rate limiting across app restarts
   Future<void> addPricePulse(PricePulse pulse) async {
     try {
       // Verify user is authenticated (but don't store user ID for anonymity)
@@ -58,9 +62,14 @@ class PricePulseService {
         throw Exception('User not authenticated');
       }
 
-      // Rate limiting check
-      if (_lastSubmissionTime != null) {
-        final timeSinceLastSubmission = DateTime.now().difference(_lastSubmissionTime!);
+      // Persistent rate limiting check using SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final lastSubmissionStr = prefs.getString(_lastSubmissionKey);
+
+      if (lastSubmissionStr != null) {
+        final lastSubmissionTime = DateTime.parse(lastSubmissionStr);
+        final timeSinceLastSubmission = DateTime.now().difference(lastSubmissionTime);
+
         if (timeSinceLastSubmission < minSubmissionInterval) {
           final remainingTime = minSubmissionInterval - timeSinceLastSubmission;
           final remainingMinutes = remainingTime.inMinutes;
@@ -84,8 +93,8 @@ class PricePulseService {
 
       await _firestore.collection(_getPublicPath()).add(data);
 
-      // Update last submission time on success
-      _lastSubmissionTime = DateTime.now();
+      // Persist submission time to prevent app restart bypass
+      await prefs.setString(_lastSubmissionKey, DateTime.now().toIso8601String());
 
       Logger.success('Price pulse submitted successfully');
     } catch (e) {
