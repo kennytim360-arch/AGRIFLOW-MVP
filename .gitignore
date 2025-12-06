@@ -59,6 +59,10 @@ firebase-debug.*.log
 *.jks
 android/key.properties
 ios/Runner/Config.xcconfig
+KEYSTORE_CREDENTIALS.txt
+
+# Windows artifacts
+nul
 
 # Windows
 *.exe

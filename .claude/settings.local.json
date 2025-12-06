@@ -13,7 +13,12 @@
       "Bash(find:*)",
       "Bash(flutter --version:*)",
       "Bash(git push:*)",
-      "Bash(flutter build:*)"
+      "Bash(flutter build:*)",
+      "Bash(flutter test:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
