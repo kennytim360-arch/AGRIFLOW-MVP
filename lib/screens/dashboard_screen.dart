@@ -15,6 +15,8 @@ import 'package:agriflow/utils/snackbar_helper.dart';
 import 'package:agriflow/utils/error_handler.dart';
 import 'package:agriflow/widgets/cards/stat_card.dart';
 import 'package:agriflow/widgets/cards/custom_card.dart';
+import 'package:agriflow/screens/user_metrics_screen.dart';
+import 'package:agriflow/screens/market_trends_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -267,6 +269,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Colors.orange.shade50,
                             Colors.orange.shade700,
                           ),
+                          const SizedBox(height: 32),
+
+                          // Analytics Quick Access
+                          Text(
+                            'Analytics',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildAnalyticsCard(
+                                  context,
+                                  'My Metrics',
+                                  'View your stats',
+                                  Icons.analytics,
+                                  Colors.purple,
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const UserMetricsScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildAnalyticsCard(
+                                  context,
+                                  'Market Trends',
+                                  'See price trends',
+                                  Icons.trending_up,
+                                  Colors.green,
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const MarketTrendsScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         ] else ...[
                           // Empty State
                           CustomCard(
@@ -342,6 +394,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.8)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return CustomCard(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 32),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
