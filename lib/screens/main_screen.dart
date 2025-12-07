@@ -4,11 +4,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:agriflow/screens/dashboard_screen.dart';
 import 'package:agriflow/screens/portfolio_screen.dart';
 import 'package:agriflow/screens/calculator_screen.dart';
 import 'package:agriflow/screens/price_pulse_screen.dart';
 import 'package:agriflow/screens/settings_screen.dart';
+import 'package:agriflow/services/price_log_service.dart';
+import 'package:agriflow/widgets/dialogs/weekly_price_reminder_dialog.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -27,6 +30,27 @@ class _MainScreenState extends State<MainScreen> {
     PricePulseScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWeeklyReminder();
+  }
+
+  Future<void> _checkWeeklyReminder() async {
+    // Wait for build to complete
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    final priceLogService = Provider.of<PriceLogService>(context, listen: false);
+    final shouldShow = await priceLogService.shouldShowReminder();
+
+    if (shouldShow && mounted) {
+      await WeeklyPriceReminderDialog.show(context);
+      await priceLogService.markReminderShown();
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {

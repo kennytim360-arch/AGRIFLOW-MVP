@@ -19,6 +19,7 @@ import 'services/user_preferences_service.dart';
 import 'services/analytics_service.dart';
 import 'services/validation_tracker_service.dart';
 import 'services/user_metrics_service.dart';
+import 'services/price_log_service.dart';
 import 'providers/theme_provider.dart';
 import 'utils/logger.dart';
 
@@ -88,6 +89,7 @@ class MyApp extends StatelessWidget {
         Provider(create: (_) => AnalyticsService()),
         Provider(create: (_) => ValidationTrackerService()),
         ChangeNotifierProvider(create: (_) => UserMetricsService()),
+        ChangeNotifierProvider(create: (_) => PriceLogService()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

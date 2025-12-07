@@ -17,6 +17,7 @@ import 'package:agriflow/widgets/cards/stat_card.dart';
 import 'package:agriflow/widgets/cards/custom_card.dart';
 import 'package:agriflow/screens/user_metrics_screen.dart';
 import 'package:agriflow/screens/market_trends_screen.dart';
+import 'package:agriflow/screens/price_log_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -273,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                           // Analytics Quick Access
                           Text(
-                            'Analytics',
+                            'Analytics & Tools',
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
@@ -317,6 +318,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   },
                                 ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildAnalyticsCard(
+                                  context,
+                                  'Price Log',
+                                  'Track your offers',
+                                  Icons.receipt_long,
+                                  Colors.orange,
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const PriceLogScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(child: SizedBox()), // Empty space
                             ],
                           ),
                         ] else ...[
